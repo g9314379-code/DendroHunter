@@ -45,15 +45,14 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         #toast-bar { display: none; position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 2000; max-width: 90%; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* ====== 翻新：左上角玩家資源狀態 ====== */
+        /* 左上角玩家資源狀態 */
         #stats-panel { position: absolute; top: 12px; left: 12px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
         #fertilizer-display, #species-count { background: rgba(255,255,255,0.95); padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: bold; color: #27ae60; box-shadow: 0 3px 12px rgba(0,0,0,0.15); border: 2px solid #2ecc71; pointer-events: auto;}
         #species-count { color: #2980b9; border-color: #3498db; }
         #streak-info { background: rgba(0,0,0,0.75); color: #f1c40f; padding: 5px 11px; border-radius: 16px; font-size: 12px; text-align: center; pointer-events: auto;}
 
-        /* ====== 翻新：右下角行動選單 ====== */
+        /* 右下角行動選單 */
         #action-menu-btn { position: absolute; bottom: 20px; right: 16px; z-index: 1001; background: linear-gradient(135deg, #8e44ad, #9b59b6); color: white; border: none; padding: 14px 22px; border-radius: 30px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.3s; }
-        
         #action-menu-panel { display: none; position: absolute; bottom: 80px; right: 16px; background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 1000; border: 2px solid #8e44ad; flex-direction: column; gap: 10px; width: 160px; }
         #action-menu-panel.show { display: flex; animation: slideUp 0.2s ease-out; }
         @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -204,12 +203,11 @@
         settingsBtn.addEventListener('click', () => { settingsPanel.classList.toggle('show'); });
         
         function showToast(msg) {
-            toastBar.textContent = msg; toastBar.style.display = 'block';
+            toastBar.innerHTML = msg; toastBar.style.display = 'block';
             if (toastTimeout) clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => toastBar.style.display = 'none', 3000);
         }
 
-        // 行動選單互動
         const actionMenuBtn = document.getElementById('action-menu-btn');
         const actionMenuPanel = document.getElementById('action-menu-panel');
 
@@ -222,7 +220,6 @@
             }
         });
 
-        // 點擊選單內的按鈕後自動收合選單
         document.querySelectorAll('#action-menu-panel button').forEach(btn => {
             btn.addEventListener('click', () => {
                 actionMenuPanel.classList.remove('show');
@@ -231,7 +228,7 @@
         });
 
         // ========== 遊戲核心資料與設定 ==========
-        const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson'; // 記得改成相對路徑
+        const MAJOR_PARKS_URL = './Trees_Major_Parks_converted.geojson'; // 記得使用相對路徑
         const STORAGE_KEY = 'dendro_hunter_save';
 
         let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [] };
@@ -341,7 +338,7 @@
             const park = parksData[parkName]; if (!park) return;
             currentParkName = parkName; mapDiv.style.display = 'none'; sceneContainer.style.display = 'block';
             document.getElementById('leave-park-btn').style.display = 'block'; document.getElementById('crosshair').style.display = 'block'; 
-            settingsPanel.classList.remove('show'); settingsBtn.style.display = 'none'; // 隱藏設定按鈕避免擋畫面
+            settingsPanel.classList.remove('show'); settingsBtn.style.display = 'none'; 
             map.closePopup();
             
             const sceneDiv = document.getElementById('scene3d');
@@ -469,15 +466,7 @@
             );
         }
 
-        // ========== 遊戲卡牌收集機制 ==========
-        document.getElementById('checkin-btn').addEventListener('click', () => {
-            const today = new Date().toISOString().split('T')[0];
-            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
-            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
-            savePlayerData();
-            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
-        });
-
+        // ========== 卡牌收集機制與網址解析 ==========
         function collectSpecies(name) {
             const speciesName = name.replace(/[（(].*?[）)]/g, '').trim();
             if (!speciesName) return;
@@ -490,6 +479,61 @@
             }
             savePlayerData();
         }
+
+        async function fetchTreeNameFromURL(url) {
+            try {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.contents, "text/html");
+                let resultName = "未知樹木";
+
+                if (url.includes('greening.gov.hk')) {
+                    const allElements = doc.querySelectorAll('div, td, span, p, h1, h2, h3');
+                    for (let i = 0; i < allElements.length; i++) {
+                        const text = allElements[i].innerText.trim();
+                        if (text === '學名' || text.includes('Scientific Name')) {
+                            for (let j = i - 1; j >= 0; j--) {
+                                const prevText = allElements[j].innerText.trim();
+                                if (prevText.length > 0 && prevText.length < 30) {
+                                    resultName = prevText;
+                                    break;
+                                }
+                            }
+                            break; 
+                        }
+                    }
+                    if (resultName === "未知樹木") {
+                        const h2 = doc.querySelector('h2, .page-title, .tree-name');
+                        if (h2 && h2.innerText.trim().length > 0) resultName = h2.innerText.trim();
+                    }
+                } else {
+                    const title = doc.querySelector('title');
+                    if (title) {
+                        const parts = title.innerText.split(/[-|]/);
+                        resultName = parts[parts.length - 1].trim();
+                    }
+                }
+
+                if (resultName !== "未知樹木") {
+                    resultName = resultName.split(/[,，]/)[0].replace(/[（(].*?[）)]/g, '').trim();
+                }
+                return resultName;
+            } catch (error) {
+                console.error("網址解析失敗:", error);
+                return null;
+            }
+        }
+
+        document.getElementById('checkin-btn').addEventListener('click', () => {
+            const today = new Date().toISOString().split('T')[0];
+            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
+            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
+            savePlayerData();
+            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
+        });
 
         function renderCardGallery() {
             const grid = document.getElementById('card-grid'); grid.innerHTML = ''; 
@@ -511,23 +555,49 @@
             const msg = document.getElementById('scan-message');
             modal.classList.add('show');
             msg.innerHTML = '正在請求相機權限...';
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 stream.getTracks().forEach(track => track.stop());
+                
                 msg.innerHTML = '相機啟動中...';
                 html5QrCode = new Html5Qrcode("reader");
-                await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-                    html5QrCode.stop().catch(()=>{}); modal.classList.remove('show'); collectSpecies(decodedText);
+                
+                await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (decodedText) => {
+                    html5QrCode.stop().catch(()=>{}); 
+                    
+                    if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+                        msg.innerHTML = '正在分析網址中的樹木資料...<br><div class="spinner" style="margin:10px auto; width:24px; height:24px;"></div>';
+                        const extractedName = await fetchTreeNameFromURL(decodedText);
+                        modal.classList.remove('show');
+                        if (extractedName && extractedName !== "未知樹木") {
+                            collectSpecies(extractedName);
+                        } else {
+                            showToast('無法自動讀取樹名，請改用「模擬掃描」輸入');
+                        }
+                    } else {
+                        modal.classList.remove('show');
+                        collectSpecies(decodedText);
+                    }
+                    
                 }, () => {});
+                
                 msg.innerHTML = '請將鏡頭對準樹上的 QR Code';
+
             } catch (err) {
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span>';
-                else if (!window.isSecureContext) msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 HTTPS';
-                else msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 找不到相機或發生錯誤</span>';
+                console.error("相機啟動錯誤:", err);
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span><br>請在瀏覽器設定中重新允許。';
+                } else if (!window.isSecureContext) {
+                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 HTTPS。';
+                } else {
+                    msg.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">❌ 找不到相機或發生錯誤</span><br>${err.message}`;
+                }
             }
         });
 
         document.getElementById('real-scan-close').addEventListener('click', () => { if (html5QrCode) html5QrCode.stop().catch(()=>{}); document.getElementById('real-scan-modal').classList.remove('show'); });
+        
         document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
