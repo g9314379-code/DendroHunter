@@ -31,6 +31,9 @@
         .dev-control { margin-bottom: 12px; }
         .dev-control label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         select, input[type="text"] { width: 100%; padding: 8px 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; }
+        /* 新增：重設按鈕樣式 */
+        #reset-game-btn { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
+        #reset-game-btn:active { transform: scale(0.95); }
 
         .player-marker { background-color: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(52, 152, 219, 0.9); animation: pulse 1.6s infinite; }
         @keyframes pulse { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { transform: scale(1.15); box-shadow: 0 0 0 16px rgba(52, 152, 219, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); } }
@@ -138,6 +141,9 @@
             <label for="park-select">傳送玩家至公園：</label>
             <select id="park-select" disabled><option value="">-- 請先開啟虛擬 GPS --</option></select>
         </div>
+        <!-- 這是新加入的重設遊戲按鈕 -->
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
+        <button id="reset-game-btn">🗑️ 重設遊戲資料</button>
     </div>
 
     <!-- 遊戲短暫提示 Toast -->
@@ -253,7 +259,6 @@
         const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson';
         const STORAGE_KEY = 'dendro_hunter_save';
 
-        // 新增 treeLevels 字典來記錄每棵樹的等級
         let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
         let html5QrCode = null;
         let currentParkName = null;
@@ -268,7 +273,7 @@
         const mapDiv = document.getElementById('map');
         const sceneContainer = document.getElementById('scene3d-container');
 
-        // ========== 玩家資料系統 ==========
+        // ========== 玩家資料系統與重設功能 ==========
         function loadPlayerData() {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -276,7 +281,7 @@
                     const parsed = JSON.parse(saved);
                     playerData = { ...playerData, ...parsed };
                     if (!Array.isArray(playerData.collectedSpecies)) playerData.collectedSpecies = [];
-                    if (!playerData.treeLevels) playerData.treeLevels = {}; // 確保舊玩家也有這個欄位
+                    if (!playerData.treeLevels) playerData.treeLevels = {};
                 } catch(e) {}
             }
             updateUI();
@@ -292,6 +297,19 @@
             document.getElementById('streak-info').textContent = `連續簽到：${playerData.streak} 天`;
             document.getElementById('species-count').textContent = `📖 已收集：${playerData.collectedSpecies.length} 種`;
         }
+
+        // 新增：重設遊戲進度按鈕事件
+        document.getElementById('reset-game-btn').addEventListener('click', () => {
+            const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料（包含收集的卡牌、肥料與園圃進度）嗎？此動作無法復原！");
+            if (confirmReset) {
+                localStorage.removeItem(STORAGE_KEY); // 清除本機儲存
+                // 恢復為預設空白資料
+                playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
+                updateUI();
+                settingsPanel.classList.remove('show');
+                showToast('🗑️ 遊戲資料已完全重設');
+            }
+        });
 
         // ========== 地圖與 3D 系統 ==========
         const map = L.map('map').setView([22.3193, 114.1694], 11);
@@ -509,7 +527,7 @@
                 showToast(`獲得重複卡牌「${speciesName}」，轉換為 1 袋肥料 🌱`);
             } else {
                 playerData.collectedSpecies.push(speciesName); 
-                playerData.treeLevels[speciesName] = 1; // 🌲 新樹木初始等級為 1 (幼苗)
+                playerData.treeLevels[speciesName] = 1; 
                 playerData.fertilizer += 2; 
                 showToast(`成功收集新樹木！獲得 2 袋肥料 🌱`);
                 
@@ -522,7 +540,7 @@
 
         async function fetchTreeNameFromURL(url) {
             try {
-                // 呼叫你的 Vercel API
+                // 修改為呼叫 Vercel API
                 const apiUrl = `https://dendro-hunter.vercel.app/api/get-tree?url=${encodeURIComponent(url)}`;
                 const response = await fetch(apiUrl);
                 
@@ -530,7 +548,6 @@
                 const data = await response.json();
                 
                 if (data.name && data.name !== "未知樹木") {
-                    // 自動切割陣列，只保留第一個最主要的樹名
                     let cleanName = data.name.split(/[,，、/]/)[0].replace(/[（(].*?[）)]/g, '').trim();
                     return cleanName;
                 } else {
@@ -550,7 +567,6 @@
             showToast(`簽到成功！獲得 1 袋肥料 🌱`);
         });
 
-        // 🌟 核心功能：渲染虛擬園圃與升級系統
         function renderGarden() {
             const grid = document.getElementById('garden-grid');
             grid.innerHTML = '';
@@ -601,7 +617,6 @@
             showToast(`✨ 升級成功！${species} 長大成為「${['幼苗','小樹苗','成長期','大樹','巨木'][level]}」了！`);
         };
 
-        // 打開園圃按鈕
         document.getElementById('garden-btn').addEventListener('click', () => { 
             renderGarden(); 
             document.getElementById('garden-modal').classList.add('show'); 
@@ -610,7 +625,6 @@
             document.getElementById('garden-modal').classList.remove('show'); 
         });
 
-        // 打開原本的卡牌圖鑑
         function renderCardGallery() {
             const grid = document.getElementById('card-grid'); grid.innerHTML = ''; 
             if (playerData.collectedSpecies.length === 0) { grid.innerHTML = '<p style="grid-column: span 3; text-align:center; color:#999;">尚未收集任何卡牌，快去掃描吧！</p>'; return; }
@@ -626,7 +640,6 @@
         document.getElementById('close-collection-btn').addEventListener('click', () => { document.getElementById('collection-modal').classList.remove('show'); });
         document.getElementById('close-reveal-btn').addEventListener('click', () => { document.getElementById('card-reveal-modal').classList.remove('show'); });
 
-        // 真實掃描 QR Code
         document.getElementById('real-scan-btn').addEventListener('click', async () => {
             const modal = document.getElementById('real-scan-modal');
             const msg = document.getElementById('scan-message');
@@ -670,7 +683,7 @@
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
 
-        // 啟動 (讀取單一完整檔案)
+        // 啟動
         loadPlayerData();
         loadTreeData();
         startRealGPS();
