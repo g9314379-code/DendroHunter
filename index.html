@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>城木獵人 Dendro-Hunter</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            overflow: hidden; background-color: #000;
+        }
+        
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* 3D 容器與虛擬搖桿 */
+        #scene3d-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; background: #87CEEB; }
+        #scene3d { width: 100%; height: 100%; touch-action: none; }
+        #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 120px; height: 120px; z-index: 501; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: rgba(255,255,255,0.8); border-radius: 50%; transform: translate(-50%, -50%); z-index: 501; pointer-events: none; display: none; }
+        #tree-info-panel { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid #27ae60; z-index: 1000; text-align: center; pointer-events: none; min-width: 200px; }
+        #tree-info-panel h4 { margin: 0 0 5px 0; color: #27ae60; font-size: 18px; }
+        #tree-info-panel p { margin: 0; color: #555; font-size: 13px; font-style: italic; }
+
+        #dev-panel { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.96); padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18); z-index: 1000; width: 280px; border: 2px solid #27ae60; font-size: 14px; }
+        #dev-panel h3 { margin: 0 0 12px 0; color: #1e8449; font-size: 16px; }
+        .dev-control { margin-bottom: 12px; }
+        .dev-control label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        select, input[type="text"] { width: 100%; padding: 8px 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; }
+
+        .player-marker { background-color: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(52, 152, 219, 0.9); animation: pulse 1.6s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { transform: scale(1.15); box-shadow: 0 0 0 16px rgba(52, 152, 219, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); } }
+
+        #loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.78); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; font-size: 18px; gap: 14px; }
+        .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #2ecc71; border-radius: 50%; animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #status-bar { position: absolute; bottom: 210px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.78); color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; z-index: 1000; max-width: 92%; text-align: center; }
+
+        #action-panel { position: absolute; bottom: 20px; right: 16px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        #fertilizer-display, #species-count { background: rgba(255,255,255,0.95); padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: bold; color: #27ae60; box-shadow: 0 3px 12px rgba(0,0,0,0.15); border: 2px solid #2ecc71; }
+        #species-count { color: #2980b9; border-color: #3498db; }
+
+        #checkin-btn, #scan-btn, #real-scan-btn, #leave-park-btn, #collection-btn { color: white; border: none; padding: 11px 16px; border-radius: 30px; font-size: 13px; font-weight: bold; cursor: pointer; min-width: 130px; }
+        #checkin-btn { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        #collection-btn { background: linear-gradient(135deg, #f39c12, #d35400); }
+        #scan-btn { background: linear-gradient(135deg, #2980b9, #3498db); }
+        #real-scan-btn { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
+        #leave-park-btn { background: linear-gradient(135deg, #c0392b, #e74c3c); display: none; z-index: 1001; }
+        #checkin-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        #streak-info { background: rgba(0,0,0,0.75); color: #f1c40f; padding: 5px 11px; border-radius: 16px; font-size: 12px; text-align: center; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); z-index: 3000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 20px; border-radius: 16px; width: 92%; max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin: 0 0 14px 0; color: #2c3e50; }
+        #reader { width: 100%; min-height: 260px; background: #111; border-radius: 10px; overflow: hidden; }
+
+        .modal-buttons { display: flex; gap: 10px; margin-top: 14px; }
+        .modal-buttons button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .btn-confirm { background: #27ae60; color: white; }
+        .btn-cancel { background: #bdc3c7; color: #2c3e50; }
+        .enter-park-btn { margin-top: 10px; width: 100%; padding: 8px 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+
+        /* ====== 卡牌系統專屬 CSS ====== */
+        .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 5px; }
+        .tcg-card { background: linear-gradient(135deg, #2ecc71, #27ae60); border: 2px solid #f1c40f; border-radius: 8px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; padding: 5px; }
+        .tcg-card.locked { background: #bdc3c7; border-color: #95a5a6; color: #7f8c8d; }
+        .tcg-card .icon { font-size: 32px; margin-bottom: 5px; }
+        
+        #card-reveal-content { background: transparent; box-shadow: none; text-align: center; }
+        .reveal-card { width: 200px; height: 280px; margin: 0 auto 20px; background: linear-gradient(135deg, #f1c40f, #f39c12); border: 5px solid #fff; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(241, 196, 15, 0.9); animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: #fff; }
+        .reveal-card .icon { font-size: 60px; margin-bottom: 15px; }
+        .reveal-card .title { font-size: 24px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .reveal-card .sub { font-size: 12px; margin-top: 10px; opacity: 0.9; }
+        @keyframes popIn { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="loading"><div class="spinner"></div><div id="loading-text">正在從本機載入樹木資料...</div></div>
+
+    <!-- 2D 地圖 -->
+    <div id="map"></div>
+
+    <!-- 3D 虛擬步行場景 -->
+    <div id="scene3d-container">
+        <div id="scene3d"></div>
+        <div id="joystick-zone"></div>
+        <div id="crosshair"></div>
+        <div id="tree-info-panel"><h4 id="tip-name">樹名</h4><p id="tip-science">Scientific Name</p></div>
+    </div>
+
+    <div id="dev-panel">
+        <h3>🛠️ 開發模式</h3>
+        <div class="dev-control"><label><input type="checkbox" id="mock-gps-toggle"> 啟用虛擬 GPS (關閉真實定位)</label></div>
+        <div class="dev-control">
+            <label for="park-select">傳送玩家至公園：</label>
+            <select id="park-select" disabled><option value="">-- 請先開啟虛擬 GPS --</option></select>
+        </div>
+    </div>
+
+    <div id="status-bar">準備中...</div>
+
+    <div id="action-panel">
+        <div id="streak-info">連續簽到：0 天</div>
+        <div id="fertilizer-display">🌱 肥料：0</div>
+        <div id="species-count">📖 已收集：0 種</div>
+        <button id="checkin-btn">每日簽到</button>
+        <button id="collection-btn">📖 我的卡牌</button>
+        <button id="real-scan-btn">真實掃描 QR</button>
+        <button id="scan-btn">模擬掃描</button>
+        <button id="leave-park-btn">離開公園</button>
+    </div>
+
+    <!-- 掃描 Modals -->
+    <div id="real-scan-modal" class="modal">
+        <div class="modal-content">
+            <h3>掃描樹木 QR Code</h3>
+            <div id="reader"></div>
+            <p id="scan-message" style="margin:10px 0 0; font-size:13px; color:#666; text-align:center;"></p>
+            <div class="modal-buttons"><button class="btn-cancel" id="real-scan-close">關閉</button></div>
+        </div>
+    </div>
+
+    <div id="scan-modal" class="modal">
+        <div class="modal-content">
+            <h3>模擬掃描樹木 QR</h3>
+            <p style="margin:0 0 12px 0; color:#666; font-size:14px;">請輸入樹上標籤的中文品種名稱</p>
+            <input type="text" id="species-input" placeholder="例如：細葉榕、鳳凰木" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="btn-cancel" id="scan-cancel">取消</button>
+                <button class="btn-confirm" id="scan-confirm">確認收集</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 卡牌相關 Modals -->
+    <div id="collection-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 style="text-align: center; color: #27ae60;">🌳 樹木卡牌圖鑑</h3>
+            <p style="text-align: center; font-size: 13px; color: #666;">探索公園並掃描 QR Code 來解鎖更多樹木！</p>
+            <div class="card-grid" id="card-grid"></div>
+            <div class="modal-buttons"><button class="btn-cancel" id="close-collection-btn">關閉圖鑑</button></div>
+        </div>
+    </div>
+
+    <div id="card-reveal-modal" class="modal">
+        <div class="modal-content" id="card-reveal-content">
+            <h2 style="color: #fff; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" id="reveal-title">解鎖新卡牌！</h2>
+            <div class="reveal-card">
+                <div class="icon">🌳</div>
+                <div class="title" id="reveal-card-name">細葉榕</div>
+                <div class="sub">★ 等級 1 樹木 ★</div>
+            </div>
+            <div class="modal-buttons"><button class="btn-confirm" id="close-reveal-btn" style="background: #f1c40f; color: #000;">收下卡牌</button></div>
+        </div>
+    </div>
+
+    <!-- 載入外部腳本 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
+
+    <script>
+        // ========== 遊戲核心資料與設定 ==========
+        const MAJOR_PARKS_URL = 'http://192.168.1.52/Dendro/Trees_Major_Parks_Trees_Major_Parks_converted.geojson';
+        const STORAGE_KEY = 'dendro_hunter_save';
+
+        let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [] };
+        let html5QrCode = null;
+        let currentParkName = null;
+        let parksData = {};
+        let isMockGps = false;
+        let watchId = null;
+        let currentPlayerLat = 22.3193;
+        let currentPlayerLng = 114.1694;
+
+        const statusBar = document.getElementById('status-bar');
+        const loadingEl = document.getElementById('loading');
+        const parkSelect = document.getElementById('park-select');
+        const mapDiv = document.getElementById('map');
+        const sceneContainer = document.getElementById('scene3d-container');
+
+        // ========== 玩家資料系統 ==========
+        function loadPlayerData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    playerData = { ...playerData, ...parsed };
+                    if (!Array.isArray(playerData.collectedSpecies)) playerData.collectedSpecies = [];
+                } catch(e) {}
+            }
+            updateUI();
+        }
+
+        function savePlayerData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(playerData));
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('fertilizer-display').textContent = `🌱 肥料：${playerData.fertilizer}`;
+            document.getElementById('streak-info').textContent = `連續簽到：${playerData.streak} 天`;
+            document.getElementById('species-count').textContent = `📖 已收集：${playerData.collectedSpecies.length} 種`;
+        }
+
+        // ========== 地圖與 3D 系統 ==========
+        const map = L.map('map').setView([22.3193, 114.1694], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        const playerMarker = L.marker([22.3193, 114.1694], { icon: L.divIcon({ className: 'player-marker', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map);
+
+        async function loadTreeData() {
+            try {
+                const response = await fetch(MAJOR_PARKS_URL);
+                if (!response.ok) throw new Error('無法載入');
+                const data = await response.json();
+                data.features.forEach(f => {
+                    const props = f.properties || {};
+                    const name = props.Location_in_Chinese || props.Location_in_English;
+                    if (!name) return;
+                    const coords = f.geometry.coordinates; 
+                    if (!parksData[name]) parksData[name] = { count: 0, latSum: 0, lngSum: 0, trees: [] };
+                    parksData[name].count += 1; parksData[name].lngSum += coords[0]; parksData[name].latSum += coords[1];
+                    parksData[name].trees.push({ lat: coords[1], lng: coords[0], chinese: props.Chinese_Name, scientific: props.Scientific_Name });
+                });
+                Object.keys(parksData).forEach(name => {
+                    const p = parksData[name]; p.lat = p.latSum/p.count; p.lng = p.lngSum/p.count;
+                    const marker = L.marker([p.lat, p.lng]).addTo(map);
+                    marker.bindPopup(`<div style="min-width:170px"><div style="font-size:16px;font-weight:bold;color:#27ae60;margin-bottom:6px;">🌳 ${name}</div><button class="enter-park-btn" onclick="enterPark('${name.replace(/'/g, "\\'")}')">進入 3D 公園</button></div>`);
+                    parkSelect.add(new Option(`${name}`, name));
+                });
+                loadingEl.style.display = 'none';
+            } catch (err) {}
+        }
+
+        // --- 動態生成帶有真實地圖路徑的地板 ---
+        function createMapFloor(scene, centerLat, centerLng) {
+            const zoom = 17;
+            const resolution = 156543.03392 * Math.cos(centerLat * Math.PI / 180) / Math.pow(2, zoom);
+            const tileX_exact = (centerLng + 180) / 360 * Math.pow(2, zoom);
+            const tileY_exact = (1 - Math.log(Math.tan(centerLat * Math.PI / 180) + 1 / Math.cos(centerLat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom);
+            const tileX_int = Math.floor(tileX_exact); const tileY_int = Math.floor(tileY_exact);
+            const offsetX = (tileX_exact - tileX_int) * 256; const offsetY = (tileY_exact - tileY_int) * 256;
+
+            const canvas = document.createElement('canvas'); canvas.width = 768; canvas.height = 768;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = "#4CAF50"; ctx.fillRect(0, 0, 768, 768);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const floorSize = 768 * resolution;
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, floorSize), new THREE.MeshLambertMaterial({ map: texture, color: 0xdddddd }));
+            floor.rotation.x = -Math.PI / 2;
+            
+            const shiftX = (384 - (256 + offsetX)) * resolution; const shiftZ = (384 - (256 + offsetY)) * resolution; 
+            floor.position.set(shiftX, 0, shiftZ);
+            scene.add(floor);
+
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    const img = new Image(); img.crossOrigin = "Anonymous";
+                    img.onload = () => { ctx.drawImage(img, (dx + 1) * 256, (dy + 1) * 256, 256, 256); texture.needsUpdate = true; };
+                    img.src = `https://tile.openstreetmap.org/${zoom}/${tileX_int + dx}/${tileY_int + dy}.png`;
+                }
+            }
+        }
+
+        let scene3D, camera3D, renderer3D, animationId3D, joystickManager;
+        const walkSpeed = 0.15; let moveData = { forward: 0, right: 0 };
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        
+        window.enterPark = function(parkName) {
+            const park = parksData[parkName]; if (!park) return;
+            currentParkName = parkName; mapDiv.style.display = 'none'; sceneContainer.style.display = 'block';
+            document.getElementById('leave-park-btn').style.display = 'block'; document.getElementById('dev-panel').style.display = 'none'; document.getElementById('crosshair').style.display = 'block'; map.closePopup();
+            
+            const sceneDiv = document.getElementById('scene3d');
+            scene3D = new THREE.Scene(); scene3D.background = new THREE.Color(0x87CEEB); scene3D.fog = new THREE.Fog(0x87CEEB, 10, 150);
+            camera3D = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera3D.rotation.order = 'YXZ'; 
+
+            // 【修正重點：距離安全鎖】
+            const latScale = 111000; 
+            const lngScale = 111000 * Math.cos(park.lat * Math.PI / 180);
+            let startX = (currentPlayerLng - park.lng) * lngScale;
+            let startZ = -(currentPlayerLat - park.lat) * latScale;
+            
+            const distanceFromCenter = Math.sqrt(startX * startX + startZ * startZ);
+            if (isMockGps || distanceFromCenter > 500) {
+                startX = 0; startZ = 0;
+            }
+            camera3D.position.set(startX, 1.7, startZ); 
+
+            renderer3D = new THREE.WebGLRenderer({ antialias: false }); renderer3D.setSize(window.innerWidth, window.innerHeight);
+            sceneDiv.appendChild(renderer3D.domElement);
+
+            scene3D.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene3D.add(dirLight);
+
+            createMapFloor(scene3D, park.lat, park.lng);
+
+            // 建立樹木
+            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8); const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+            const leavesGeo = new THREE.ConeGeometry(1.5, 3.5, 8); const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
+
+            park.trees.slice(0, 200).forEach(tree => {
+                const x = (tree.lng - park.lng) * lngScale; const z = -(tree.lat - park.lat) * latScale;
+                const treeGroup = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 1; 
+                const leaves = new THREE.Mesh(leavesGeo, leavesMat); leaves.position.y = 3.5; 
+                const treeData = { chinese: tree.chinese, scientific: tree.scientific };
+                trunk.userData = treeData; leaves.userData = treeData;
+                treeGroup.add(trunk); treeGroup.add(leaves); treeGroup.position.set(x, 0, z); scene3D.add(treeGroup);
+            });
+
+            joystickManager = nipplejs.create({ zone: document.getElementById('joystick-zone'), mode: 'static', position: { left: '50%', top: '50%' }, color: 'white' });
+            joystickManager.on('move', (evt, data) => { moveData.forward = Math.sin(data.angle.radian) * Math.min(data.force, 1); moveData.right = Math.cos(data.angle.radian) * Math.min(data.force, 1); });
+            joystickManager.on('end', () => { moveData.forward = 0; moveData.right = 0; });
+
+            let isDragging = false; let previousTouch = null; let startTouchTime = 0; let startTouchPos = { x: 0, y: 0 };
+            sceneDiv.addEventListener('touchstart', (e) => { if (e.target.closest('#joystick-zone')) return; isDragging = true; previousTouch = e.touches[0]; startTouchTime = Date.now(); startTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+            sceneDiv.addEventListener('touchmove', (e) => { if (!isDragging) return; e.preventDefault(); const touch = e.touches[0]; camera3D.rotation.y -= (touch.pageX - previousTouch.pageX) * 0.005; camera3D.rotation.x -= (touch.pageY - previousTouch.pageY) * 0.005; camera3D.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, camera3D.rotation.x)); previousTouch = touch; }, { passive: false });
+            sceneDiv.addEventListener('touchend', (e) => {
+                isDragging = false;
+                if (e.changedTouches.length > 0) {
+                    const touch = e.changedTouches[0]; const dx = touch.clientX - startTouchPos.x; const dy = touch.clientY - startTouchPos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < 15 && (Date.now() - startTouchTime) < 350) checkTreeClick(touch.clientX, touch.clientY);
+                }
+            });
+
+            const dir = new THREE.Vector3(); const right = new THREE.Vector3();
+            function animate() {
+                animationId3D = requestAnimationFrame(animate);
+                camera3D.getWorldDirection(dir); dir.y = 0; dir.normalize(); right.crossVectors(camera3D.up, dir).normalize();
+                if (moveData.forward !== 0 || moveData.right !== 0) { camera3D.position.addScaledVector(dir, moveData.forward * walkSpeed); camera3D.position.addScaledVector(right, -moveData.right * walkSpeed); }
+                renderer3D.render(scene3D, camera3D);
+            }
+            animate();
+        };
+
+        let treeTipTimeout = null;
+        function checkTreeClick(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1; mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera3D);
+            const intersects = raycaster.intersectObjects(scene3D.children, true);
+            const panel = document.getElementById('tree-info-panel');
+            for (let i = 0; i < intersects.length; i++) {
+                const obj = intersects[i].object;
+                if (obj.userData && obj.userData.chinese) {
+                    document.getElementById('tip-name').textContent = obj.userData.chinese || '未知品種'; document.getElementById('tip-science').textContent = obj.userData.scientific || '';
+                    panel.style.display = 'block';
+                    if(treeTipTimeout) clearTimeout(treeTipTimeout); treeTipTimeout = setTimeout(() => panel.style.display = 'none', 3000); return; 
+                }
+            }
+            panel.style.display = 'none';
+        }
+
+        document.getElementById('leave-park-btn').addEventListener('click', () => {
+            cancelAnimationFrame(animationId3D); document.getElementById('scene3d').innerHTML = ''; if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
+            sceneContainer.style.display = 'none'; mapDiv.style.display = 'block'; document.getElementById('leave-park-btn').style.display = 'none'; document.getElementById('dev-panel').style.display = 'block'; document.getElementById('crosshair').style.display = 'none'; document.getElementById('tree-info-panel').style.display = 'none';
+        });
+
+        // ========== GPS 與開發模式 ==========
+        document.getElementById('mock-gps-toggle').addEventListener('change', (e) => {
+            isMockGps = e.target.checked; parkSelect.disabled = !isMockGps;
+            if (isMockGps) { if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } } else { startRealGPS(); }
+        });
+
+        parkSelect.addEventListener('change', (e) => {
+            if (isMockGps && e.target.value) {
+                const p = parksData[e.target.value];
+                currentPlayerLat = p.lat; currentPlayerLng = p.lng;
+                playerMarker.setLatLng([p.lat, p.lng]); map.flyTo([p.lat, p.lng], 16);
+            }
+        });
+
+        // 【修正重點：強化版 GPS 狀態列與除錯訊息】
+        function startRealGPS() {
+            if (!navigator.geolocation) {
+                statusBar.textContent = '❌ 此裝置不支援 GPS 定位'; return;
+            }
+            statusBar.textContent = '正在獲取真實 GPS 定位...';
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    if (isMockGps) return;
+                    currentPlayerLat = pos.coords.latitude; currentPlayerLng = pos.coords.longitude;
+                    playerMarker.setLatLng([currentPlayerLat, currentPlayerLng]);
+                    statusBar.textContent = `📡 定位成功 (${currentPlayerLat.toFixed(4)}, ${currentPlayerLng.toFixed(4)})`;
+                },
+                (err) => {
+                    if (isMockGps) return;
+                    console.warn("GPS 定位錯誤:", err);
+                    if (err.code === 1) { statusBar.textContent = '❌ 定位失敗：您拒絕了位置權限'; }
+                    else if (err.code === 2) { statusBar.textContent = '❌ 定位失敗：無法獲取 GPS 訊號 (可能在室內)'; }
+                    else if (err.code === 3) { statusBar.textContent = '❌ 定位失敗：獲取位置超時'; }
+                    else { statusBar.textContent = `❌ 定位錯誤：${err.message}`; }
+                }, 
+                { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+            );
+        }
+
+        // ========== 卡牌收集系統 ==========
+        function collectSpecies(name) {
+            const speciesName = name.replace(/[（(].*?[）)]/g, '').trim();
+            if (!speciesName) return;
+            if (playerData.collectedSpecies.includes(speciesName)) {
+                playerData.fertilizer += 1; statusBar.textContent = `「${speciesName}」已收集過，獲得 1 袋肥料`;
+            } else {
+                playerData.collectedSpecies.push(speciesName); playerData.fertilizer += 2; statusBar.textContent = `成功收集新樹木！獲得 2 袋肥料`;
+                document.getElementById('reveal-title').textContent = "解鎖新卡牌！"; document.getElementById('reveal-card-name').textContent = speciesName;
+                document.getElementById('card-reveal-modal').classList.add('show');
+            }
+            savePlayerData();
+        }
+
+        function renderCardGallery() {
+            const grid = document.getElementById('card-grid'); grid.innerHTML = ''; 
+            if (playerData.collectedSpecies.length === 0) { grid.innerHTML = '<p style="grid-column: span 3; text-align:center; color:#999;">尚未收集任何卡牌，快去掃描吧！</p>'; return; }
+            playerData.collectedSpecies.forEach(species => {
+                const card = document.createElement('div'); card.className = 'tcg-card'; card.innerHTML = `<div class="icon">🌳</div><div class="name">${species}</div>`; grid.appendChild(card);
+            });
+            for(let i=0; i<3; i++) {
+                const lockedCard = document.createElement('div'); lockedCard.className = 'tcg-card locked'; lockedCard.innerHTML = `<div class="icon">❓</div><div class="name">未解鎖</div>`; grid.appendChild(lockedCard);
+            }
+        }
+
+        document.getElementById('collection-btn').addEventListener('click', () => { renderCardGallery(); document.getElementById('collection-modal').classList.add('show'); });
+        document.getElementById('close-collection-btn').addEventListener('click', () => { document.getElementById('collection-modal').classList.remove('show'); });
+        document.getElementById('close-reveal-btn').addEventListener('click', () => { document.getElementById('card-reveal-modal').classList.remove('show'); });
+
+        // ========== 相機權限強化與掃描 ==========
+        document.getElementById('real-scan-btn').addEventListener('click', async () => {
+            const modal = document.getElementById('real-scan-modal');
+            const msg = document.getElementById('scan-message');
+            modal.classList.add('show');
+            msg.innerHTML = '正在請求相機權限...';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                stream.getTracks().forEach(track => track.stop());
+                
+                msg.innerHTML = '相機啟動中...';
+                html5QrCode = new Html5Qrcode("reader");
+                await html5QrCode.start(
+                    { facingMode: "environment" }, { fps: 10, qrbox: 250 },
+                    (decodedText) => {
+                        html5QrCode.stop().catch(()=>{});
+                        modal.classList.remove('show');
+                        collectSpecies(decodedText);
+                    }, () => {}
+                );
+                msg.innerHTML = '請將鏡頭對準樹上的 QR Code';
+
+            } catch (err) {
+                console.error("相機啟動錯誤:", err);
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span><br>請在瀏覽器的設定或網址列左側重新允許相機權限。';
+                } else if (!window.isSecureContext) {
+                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 <b>HTTPS</b> 或 <b>localhost</b> 才能開啟相機。';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 找不到相機裝置</span><br>請確認您的裝置擁有後置鏡頭。';
+                } else {
+                    msg.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">❌ 無法開啟相機</span><br>${err.message}<br>請先使用「模擬掃描」。`;
+                }
+            }
+        });
+
+        document.getElementById('real-scan-close').addEventListener('click', () => { if (html5QrCode) html5QrCode.stop().catch(()=>{}); document.getElementById('real-scan-modal').classList.remove('show'); });
+        
+        document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
+        document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
+        document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
+
+        // 啟動
+        loadPlayerData();
+        loadTreeData();
+        startRealGPS();
+    </script>
+</body>
+</html>
