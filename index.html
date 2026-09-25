@@ -654,18 +654,26 @@
         document.getElementById('close-collection-btn').addEventListener('click', () => { document.getElementById('collection-modal').classList.remove('show'); });
         document.getElementById('close-reveal-btn').addEventListener('click', () => { document.getElementById('card-reveal-modal').classList.remove('show'); });
 
-        document.getElementById('real-scan-btn').addEventListener('click', async () => {
+document.getElementById('real-scan-btn').addEventListener('click', async () => {
             const modal = document.getElementById('real-scan-modal');
             const msg = document.getElementById('scan-message');
+            const zoomContainer = document.getElementById('zoom-container');
+            const zoomSlider = document.getElementById('zoom-slider');
+            
             modal.classList.add('show');
             msg.innerHTML = '正在請求相機權限...';
+            zoomContainer.style.display = 'none'; // 初始先隱藏縮放條
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 stream.getTracks().forEach(track => track.stop());
                 msg.innerHTML = '相機啟動中...';
                 html5QrCode = new Html5Qrcode("reader");
+                
                 await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (decodedText) => {
+                    // 掃描成功時
                     html5QrCode.stop().catch(()=>{}); 
+                    zoomContainer.style.display = 'none'; // 隱藏縮放條
                     
                     if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
                         msg.innerHTML = '正在分析網址中的樹木資料...<br><div class="spinner" style="margin:10px auto; width:24px; height:24px;"></div>';
@@ -684,7 +692,38 @@
                         collectSpecies(decodedText);
                     }
                 }, () => {});
+                
                 msg.innerHTML = '請將鏡頭對準樹上的 QR Code';
+
+                // 【核心新功能：啟用硬體鏡頭縮放】
+                // 稍微等待 HTML5-QRCode 將 Video 標籤建立完成
+                setTimeout(() => {
+                    const videoElement = document.querySelector('#reader video');
+                    if (videoElement && videoElement.srcObject) {
+                        const track = videoElement.srcObject.getVideoTracks()[0];
+                        const capabilities = track.getCapabilities();
+
+                        // 檢查手機硬體是否允許瀏覽器控制縮放
+                        if (capabilities.zoom) {
+                            zoomSlider.min = capabilities.zoom.min || 1;
+                            zoomSlider.max = capabilities.zoom.max || 5;
+                            zoomSlider.step = capabilities.zoom.step || 0.1;
+                            zoomSlider.value = track.getSettings().zoom || 1;
+                            
+                            zoomContainer.style.display = 'block'; // 顯示縮放拉桿
+
+                            // 當玩家滑動拉桿時，即時改變相機焦距
+                            zoomSlider.oninput = async (e) => {
+                                try {
+                                    await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] });
+                                } catch (err) {
+                                    console.warn("無法應用縮放:", err);
+                                }
+                            };
+                        }
+                    }
+                }, 500);
+
             } catch (err) {
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span><br>請在瀏覽器設定中重新允許。';
                 else if (!window.isSecureContext) msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 HTTPS';
@@ -692,6 +731,12 @@
             }
         });
 
+        // 確保關閉視窗時，也要將縮放條隱藏並還原
+        document.getElementById('real-scan-close').addEventListener('click', () => { 
+            if (html5QrCode) html5QrCode.stop().catch(()=>{}); 
+            document.getElementById('zoom-container').style.display = 'none';
+            document.getElementById('real-scan-modal').classList.remove('show'); 
+        });
         document.getElementById('real-scan-close').addEventListener('click', () => { if (html5QrCode) html5QrCode.stop().catch(()=>{}); document.getElementById('real-scan-modal').classList.remove('show'); });
         document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
