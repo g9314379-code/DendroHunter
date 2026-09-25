@@ -17,62 +17,72 @@
         
         #map { width: 100%; height: 100%; z-index: 1; }
 
-        /* 3D 容器與虛擬搖桿 */
+        /* 3D 容器與虛擬搖桿 (搖桿在左下角) */
         #scene3d-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; background: #87CEEB; }
         #scene3d { width: 100%; height: 100%; touch-action: none; }
         #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 120px; height: 120px; z-index: 501; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: rgba(255,255,255,0.8); border-radius: 50%; transform: translate(-50%, -50%); z-index: 501; pointer-events: none; display: none; }
+        
         #tree-info-panel { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid #27ae60; z-index: 1000; text-align: center; pointer-events: none; min-width: 200px; }
         #tree-info-panel h4 { margin: 0 0 5px 0; color: #27ae60; font-size: 18px; }
         #tree-info-panel p { margin: 0; color: #555; font-size: 13px; font-style: italic; }
 
-        #dev-panel { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.96); padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18); z-index: 1000; width: 280px; border: 2px solid #27ae60; font-size: 14px; }
-        #dev-panel h3 { margin: 0 0 12px 0; color: #1e8449; font-size: 16px; }
+        /* 右上角：設定按鈕與面板 */
+        #settings-btn { position: absolute; top: 12px; right: 12px; z-index: 1000; background: rgba(255, 255, 255, 0.95); border: 2px solid #27ae60; padding: 10px 14px; border-radius: 12px; font-size: 15px; font-weight: bold; color: #27ae60; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        #settings-panel { display: none; position: absolute; top: 65px; right: 12px; background: rgba(255, 255, 255, 0.96); padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18); z-index: 1000; width: 280px; border: 2px solid #27ae60; font-size: 14px; }
+        #settings-panel.show { display: block; }
+        #settings-panel h3 { margin: 0 0 12px 0; color: #1e8449; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px;}
+        #gps-status-box { background: #f0f3f4; padding: 10px; border-radius: 8px; font-size: 13px; color: #333; margin-bottom: 12px; word-wrap: break-word; border: 1px solid #dcdcdc;}
         .dev-control { margin-bottom: 12px; }
         .dev-control label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         select, input[type="text"] { width: 100%; padding: 8px 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; }
 
+        /* 玩家標記 */
         .player-marker { background-color: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(52, 152, 219, 0.9); animation: pulse 1.6s infinite; }
         @keyframes pulse { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { transform: scale(1.15); box-shadow: 0 0 0 16px rgba(52, 152, 219, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); } }
-
         #loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.78); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; font-size: 18px; gap: 14px; }
         .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #2ecc71; border-radius: 50%; animation: spin 0.9s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        #toast-bar { display: none; position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 2000; max-width: 90%; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        #status-bar { position: absolute; bottom: 210px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.78); color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; z-index: 1000; max-width: 92%; text-align: center; }
-
-        #action-panel { position: absolute; bottom: 20px; right: 16px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-        #fertilizer-display, #species-count { background: rgba(255,255,255,0.95); padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: bold; color: #27ae60; box-shadow: 0 3px 12px rgba(0,0,0,0.15); border: 2px solid #2ecc71; }
+        /* ====== 翻新：左上角玩家資源狀態 ====== */
+        #stats-panel { position: absolute; top: 12px; left: 12px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
+        #fertilizer-display, #species-count { background: rgba(255,255,255,0.95); padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: bold; color: #27ae60; box-shadow: 0 3px 12px rgba(0,0,0,0.15); border: 2px solid #2ecc71; pointer-events: auto;}
         #species-count { color: #2980b9; border-color: #3498db; }
+        #streak-info { background: rgba(0,0,0,0.75); color: #f1c40f; padding: 5px 11px; border-radius: 16px; font-size: 12px; text-align: center; pointer-events: auto;}
 
-        #checkin-btn, #scan-btn, #real-scan-btn, #leave-park-btn, #collection-btn { color: white; border: none; padding: 11px 16px; border-radius: 30px; font-size: 13px; font-weight: bold; cursor: pointer; min-width: 130px; }
+        /* ====== 翻新：右下角行動選單 ====== */
+        #action-menu-btn { position: absolute; bottom: 20px; right: 16px; z-index: 1001; background: linear-gradient(135deg, #8e44ad, #9b59b6); color: white; border: none; padding: 14px 22px; border-radius: 30px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.3s; }
+        
+        #action-menu-panel { display: none; position: absolute; bottom: 80px; right: 16px; background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 1000; border: 2px solid #8e44ad; flex-direction: column; gap: 10px; width: 160px; }
+        #action-menu-panel.show { display: flex; animation: slideUp 0.2s ease-out; }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        #action-menu-panel button { width: 100%; color: white; border: none; padding: 11px 16px; border-radius: 30px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
         #checkin-btn { background: linear-gradient(135deg, #27ae60, #2ecc71); }
         #collection-btn { background: linear-gradient(135deg, #f39c12, #d35400); }
         #scan-btn { background: linear-gradient(135deg, #2980b9, #3498db); }
         #real-scan-btn { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
-        #leave-park-btn { background: linear-gradient(135deg, #c0392b, #e74c3c); display: none; z-index: 1001; }
+        #leave-park-btn { background: linear-gradient(135deg, #c0392b, #e74c3c); display: none; }
         #checkin-btn:disabled { background: #95a5a6; cursor: not-allowed; }
 
-        #streak-info { background: rgba(0,0,0,0.75); color: #f1c40f; padding: 5px 11px; border-radius: 16px; font-size: 12px; text-align: center; }
-
+        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); z-index: 3000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
         .modal-content { background: white; padding: 20px; border-radius: 16px; width: 92%; max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
         .modal-content h3 { margin: 0 0 14px 0; color: #2c3e50; }
         #reader { width: 100%; min-height: 260px; background: #111; border-radius: 10px; overflow: hidden; }
-
         .modal-buttons { display: flex; gap: 10px; margin-top: 14px; }
         .modal-buttons button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         .btn-confirm { background: #27ae60; color: white; }
         .btn-cancel { background: #bdc3c7; color: #2c3e50; }
         .enter-park-btn { margin-top: 10px; width: 100%; padding: 8px 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
 
-        /* ====== 卡牌系統專屬 CSS ====== */
+        /* 卡牌系統 CSS */
         .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 5px; }
         .tcg-card { background: linear-gradient(135deg, #2ecc71, #27ae60); border: 2px solid #f1c40f; border-radius: 8px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; padding: 5px; }
         .tcg-card.locked { background: #bdc3c7; border-color: #95a5a6; color: #7f8c8d; }
         .tcg-card .icon { font-size: 32px; margin-bottom: 5px; }
-        
         #card-reveal-content { background: transparent; box-shadow: none; text-align: center; }
         .reveal-card { width: 200px; height: 280px; margin: 0 auto 20px; background: linear-gradient(135deg, #f1c40f, #f39c12); border: 5px solid #fff; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(241, 196, 15, 0.9); animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: #fff; }
         .reveal-card .icon { font-size: 60px; margin-bottom: 15px; }
@@ -96,21 +106,36 @@
         <div id="tree-info-panel"><h4 id="tip-name">樹名</h4><p id="tip-science">Scientific Name</p></div>
     </div>
 
-    <div id="dev-panel">
-        <h3>🛠️ 開發模式</h3>
-        <div class="dev-control"><label><input type="checkbox" id="mock-gps-toggle"> 啟用虛擬 GPS (關閉真實定位)</label></div>
+    <!-- 左上角：玩家資源狀態 -->
+    <div id="stats-panel">
+        <div id="streak-info">連續簽到：0 天</div>
+        <div id="fertilizer-display">🌱 肥料：0</div>
+        <div id="species-count">📖 已收集：0 種</div>
+    </div>
+
+    <!-- 右上角：設定按鈕與面板 -->
+    <button id="settings-btn">⚙️ 設定</button>
+    <div id="settings-panel">
+        <h3>⚙️ 系統設定</h3>
+        <div id="gps-status-box">
+            <strong>📍 定位狀態：</strong><br>
+            <span id="gps-status-text" style="color:#666;">準備中...</span>
+        </div>
+        <div class="dev-control">
+            <label><input type="checkbox" id="mock-gps-toggle"> 啟用虛擬 GPS (開發模式)</label>
+        </div>
         <div class="dev-control">
             <label for="park-select">傳送玩家至公園：</label>
             <select id="park-select" disabled><option value="">-- 請先開啟虛擬 GPS --</option></select>
         </div>
     </div>
 
-    <div id="status-bar">準備中...</div>
+    <!-- 遊戲短暫提示 Toast -->
+    <div id="toast-bar">準備中...</div>
 
-    <div id="action-panel">
-        <div id="streak-info">連續簽到：0 天</div>
-        <div id="fertilizer-display">🌱 肥料：0</div>
-        <div id="species-count">📖 已收集：0 種</div>
+    <!-- 右下角：行動選單 -->
+    <button id="action-menu-btn">🎒 行動選單</button>
+    <div id="action-menu-panel">
         <button id="checkin-btn">每日簽到</button>
         <button id="collection-btn">📖 我的卡牌</button>
         <button id="real-scan-btn">真實掃描 QR</button>
@@ -169,8 +194,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 
     <script>
+        // ========== UI 互動與 Toast 提示系統 ==========
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const gpsStatusText = document.getElementById('gps-status-text');
+        const toastBar = document.getElementById('toast-bar');
+        let toastTimeout;
+
+        settingsBtn.addEventListener('click', () => { settingsPanel.classList.toggle('show'); });
+        
+        function showToast(msg) {
+            toastBar.textContent = msg; toastBar.style.display = 'block';
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toastBar.style.display = 'none', 3000);
+        }
+
+        // 行動選單互動
+        const actionMenuBtn = document.getElementById('action-menu-btn');
+        const actionMenuPanel = document.getElementById('action-menu-panel');
+
+        actionMenuBtn.addEventListener('click', () => {
+            actionMenuPanel.classList.toggle('show');
+            if(actionMenuPanel.classList.contains('show')) {
+                actionMenuBtn.innerHTML = '❌ 關閉選單';
+            } else {
+                actionMenuBtn.innerHTML = '🎒 行動選單';
+            }
+        });
+
+        // 點擊選單內的按鈕後自動收合選單
+        document.querySelectorAll('#action-menu-panel button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                actionMenuPanel.classList.remove('show');
+                actionMenuBtn.innerHTML = '🎒 行動選單';
+            });
+        });
+
         // ========== 遊戲核心資料與設定 ==========
-        const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson';
+        const MAJOR_PARKS_URL = './Trees_Major_Parks_converted.geojson'; // 記得改成相對路徑
         const STORAGE_KEY = 'dendro_hunter_save';
 
         let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [] };
@@ -182,7 +243,6 @@
         let currentPlayerLat = 22.3193;
         let currentPlayerLng = 114.1694;
 
-        const statusBar = document.getElementById('status-bar');
         const loadingEl = document.getElementById('loading');
         const parkSelect = document.getElementById('park-select');
         const mapDiv = document.getElementById('map');
@@ -238,10 +298,12 @@
                     parkSelect.add(new Option(`${name}`, name));
                 });
                 loadingEl.style.display = 'none';
-            } catch (err) {}
+                showToast('載入完成，點擊地圖上的公園標記進入');
+            } catch (err) {
+                document.getElementById('loading-text').textContent = '載入失敗，請確認檔案路徑。';
+            }
         }
 
-        // --- 動態生成帶有真實地圖路徑的地板 ---
         function createMapFloor(scene, centerLat, centerLng) {
             const zoom = 17;
             const resolution = 156543.03392 * Math.cos(centerLat * Math.PI / 180) / Math.pow(2, zoom);
@@ -278,23 +340,22 @@
         window.enterPark = function(parkName) {
             const park = parksData[parkName]; if (!park) return;
             currentParkName = parkName; mapDiv.style.display = 'none'; sceneContainer.style.display = 'block';
-            document.getElementById('leave-park-btn').style.display = 'block'; document.getElementById('dev-panel').style.display = 'none'; document.getElementById('crosshair').style.display = 'block'; map.closePopup();
+            document.getElementById('leave-park-btn').style.display = 'block'; document.getElementById('crosshair').style.display = 'block'; 
+            settingsPanel.classList.remove('show'); settingsBtn.style.display = 'none'; // 隱藏設定按鈕避免擋畫面
+            map.closePopup();
             
             const sceneDiv = document.getElementById('scene3d');
             scene3D = new THREE.Scene(); scene3D.background = new THREE.Color(0x87CEEB); scene3D.fog = new THREE.Fog(0x87CEEB, 10, 150);
             camera3D = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera3D.rotation.order = 'YXZ'; 
 
-            // 【修正重點：距離安全鎖】
             const latScale = 111000; 
             const lngScale = 111000 * Math.cos(park.lat * Math.PI / 180);
             let startX = (currentPlayerLng - park.lng) * lngScale;
             let startZ = -(currentPlayerLat - park.lat) * latScale;
             
             const distanceFromCenter = Math.sqrt(startX * startX + startZ * startZ);
-            if (isMockGps || distanceFromCenter > 500) {
-                startX = 0; startZ = 0;
-            }
+            if (isMockGps || distanceFromCenter > 500) { startX = 0; startZ = 0; }
             camera3D.position.set(startX, 1.7, startZ); 
 
             renderer3D = new THREE.WebGLRenderer({ antialias: false }); renderer3D.setSize(window.innerWidth, window.innerHeight);
@@ -305,7 +366,6 @@
 
             createMapFloor(scene3D, park.lat, park.lng);
 
-            // 建立樹木
             const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8); const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
             const leavesGeo = new THREE.ConeGeometry(1.5, 3.5, 8); const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
 
@@ -342,6 +402,7 @@
                 renderer3D.render(scene3D, camera3D);
             }
             animate();
+            showToast(`已進入「${parkName}」`);
         };
 
         let treeTipTimeout = null;
@@ -363,13 +424,18 @@
 
         document.getElementById('leave-park-btn').addEventListener('click', () => {
             cancelAnimationFrame(animationId3D); document.getElementById('scene3d').innerHTML = ''; if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
-            sceneContainer.style.display = 'none'; mapDiv.style.display = 'block'; document.getElementById('leave-park-btn').style.display = 'none'; document.getElementById('dev-panel').style.display = 'block'; document.getElementById('crosshair').style.display = 'none'; document.getElementById('tree-info-panel').style.display = 'none';
+            sceneContainer.style.display = 'none'; mapDiv.style.display = 'block'; document.getElementById('leave-park-btn').style.display = 'none'; document.getElementById('crosshair').style.display = 'none'; document.getElementById('tree-info-panel').style.display = 'none';
+            settingsBtn.style.display = 'block';
+            showToast('已離開公園');
         });
 
-        // ========== GPS 與開發模式 ==========
+        // ========== GPS 設定與更新 ==========
         document.getElementById('mock-gps-toggle').addEventListener('change', (e) => {
             isMockGps = e.target.checked; parkSelect.disabled = !isMockGps;
-            if (isMockGps) { if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } } else { startRealGPS(); }
+            if (isMockGps) { 
+                if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } 
+                gpsStatusText.innerHTML = '<span style="color:#e67e22;font-weight:bold;">啟用虛擬 GPS</span>';
+            } else { startRealGPS(); }
         });
 
         parkSelect.addEventListener('change', (e) => {
@@ -380,39 +446,45 @@
             }
         });
 
-        // 【修正重點：強化版 GPS 狀態列與除錯訊息】
         function startRealGPS() {
             if (!navigator.geolocation) {
-                statusBar.textContent = '❌ 此裝置不支援 GPS 定位'; return;
+                gpsStatusText.innerHTML = '<span style="color:#e74c3c;">❌ 不支援 GPS 定位</span>'; return;
             }
-            statusBar.textContent = '正在獲取真實 GPS 定位...';
+            gpsStatusText.innerHTML = '搜尋衛星訊號中...';
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
                     if (isMockGps) return;
                     currentPlayerLat = pos.coords.latitude; currentPlayerLng = pos.coords.longitude;
                     playerMarker.setLatLng([currentPlayerLat, currentPlayerLng]);
-                    statusBar.textContent = `📡 定位成功 (${currentPlayerLat.toFixed(4)}, ${currentPlayerLng.toFixed(4)})`;
+                    gpsStatusText.innerHTML = `<span style="color:#27ae60;font-weight:bold;">🟢 成功</span><br><small>Lat: ${currentPlayerLat.toFixed(4)}<br>Lng: ${currentPlayerLng.toFixed(4)}</small>`;
                 },
                 (err) => {
                     if (isMockGps) return;
-                    console.warn("GPS 定位錯誤:", err);
-                    if (err.code === 1) { statusBar.textContent = '❌ 定位失敗：您拒絕了位置權限'; }
-                    else if (err.code === 2) { statusBar.textContent = '❌ 定位失敗：無法獲取 GPS 訊號 (可能在室內)'; }
-                    else if (err.code === 3) { statusBar.textContent = '❌ 定位失敗：獲取位置超時'; }
-                    else { statusBar.textContent = `❌ 定位錯誤：${err.message}`; }
+                    if (err.code === 1) { gpsStatusText.innerHTML = '<span style="color:#e74c3c;">❌ 權限被拒絕</span>'; }
+                    else if (err.code === 2) { gpsStatusText.innerHTML = '<span style="color:#e74c3c;">❌ 無法獲取訊號</span>'; }
+                    else if (err.code === 3) { gpsStatusText.innerHTML = '<span style="color:#e74c3c;">❌ 連線超時</span>'; }
+                    else { gpsStatusText.innerHTML = `<span style="color:#e74c3c;">❌ ${err.message}</span>`; }
                 }, 
                 { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
             );
         }
 
-        // ========== 卡牌收集系統 ==========
+        // ========== 遊戲卡牌收集機制 ==========
+        document.getElementById('checkin-btn').addEventListener('click', () => {
+            const today = new Date().toISOString().split('T')[0];
+            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
+            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
+            savePlayerData();
+            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
+        });
+
         function collectSpecies(name) {
             const speciesName = name.replace(/[（(].*?[）)]/g, '').trim();
             if (!speciesName) return;
             if (playerData.collectedSpecies.includes(speciesName)) {
-                playerData.fertilizer += 1; statusBar.textContent = `「${speciesName}」已收集過，獲得 1 袋肥料`;
+                playerData.fertilizer += 1; showToast(`獲得重複卡牌「${speciesName}」，轉換為 1 袋肥料`);
             } else {
-                playerData.collectedSpecies.push(speciesName); playerData.fertilizer += 2; statusBar.textContent = `成功收集新樹木！獲得 2 袋肥料`;
+                playerData.collectedSpecies.push(speciesName); playerData.fertilizer += 2; showToast(`成功收集新樹木！獲得 2 袋肥料`);
                 document.getElementById('reveal-title').textContent = "解鎖新卡牌！"; document.getElementById('reveal-card-name').textContent = speciesName;
                 document.getElementById('card-reveal-modal').classList.add('show');
             }
@@ -434,45 +506,28 @@
         document.getElementById('close-collection-btn').addEventListener('click', () => { document.getElementById('collection-modal').classList.remove('show'); });
         document.getElementById('close-reveal-btn').addEventListener('click', () => { document.getElementById('card-reveal-modal').classList.remove('show'); });
 
-        // ========== 相機權限強化與掃描 ==========
         document.getElementById('real-scan-btn').addEventListener('click', async () => {
             const modal = document.getElementById('real-scan-modal');
             const msg = document.getElementById('scan-message');
             modal.classList.add('show');
             msg.innerHTML = '正在請求相機權限...';
-
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 stream.getTracks().forEach(track => track.stop());
-                
                 msg.innerHTML = '相機啟動中...';
                 html5QrCode = new Html5Qrcode("reader");
-                await html5QrCode.start(
-                    { facingMode: "environment" }, { fps: 10, qrbox: 250 },
-                    (decodedText) => {
-                        html5QrCode.stop().catch(()=>{});
-                        modal.classList.remove('show');
-                        collectSpecies(decodedText);
-                    }, () => {}
-                );
+                await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+                    html5QrCode.stop().catch(()=>{}); modal.classList.remove('show'); collectSpecies(decodedText);
+                }, () => {});
                 msg.innerHTML = '請將鏡頭對準樹上的 QR Code';
-
             } catch (err) {
-                console.error("相機啟動錯誤:", err);
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span><br>請在瀏覽器的設定或網址列左側重新允許相機權限。';
-                } else if (!window.isSecureContext) {
-                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 <b>HTTPS</b> 或 <b>localhost</b> 才能開啟相機。';
-                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                    msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 找不到相機裝置</span><br>請確認您的裝置擁有後置鏡頭。';
-                } else {
-                    msg.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">❌ 無法開啟相機</span><br>${err.message}<br>請先使用「模擬掃描」。`;
-                }
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span>';
+                else if (!window.isSecureContext) msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 HTTPS';
+                else msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 找不到相機或發生錯誤</span>';
             }
         });
 
         document.getElementById('real-scan-close').addEventListener('click', () => { if (html5QrCode) html5QrCode.stop().catch(()=>{}); document.getElementById('real-scan-modal').classList.remove('show'); });
-        
         document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
