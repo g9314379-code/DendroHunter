@@ -491,75 +491,26 @@
 
         async function fetchTreeNameFromURL(url) {
             try {
-                let htmlContent = null;
-
-                // 第一層：使用 AllOrigins 嘗試抓取
-                try {
-                    const res1 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-                    if (res1.ok) {
-                        const data1 = await res1.json();
-                        htmlContent = data1.contents;
-                    }
-                } catch(e) { console.warn("AllOrigins 代理失敗"); }
-
-                // 第二層備用：如果 AllOrigins 失敗，改用 CodeTabs
-                if (!htmlContent) {
-                    try {
-                        const res2 = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-                        if (res2.ok) htmlContent = await res2.text();
-                    } catch(e) { console.warn("CodeTabs 代理失敗"); }
-                }
-
-                if (!htmlContent) return null; // 完全被阻擋
+                // 呼叫你的 Vercel API
+                const apiUrl = `https://dendro-hunter.vercel.app/api/get-tree?url=${encodeURIComponent(url)}`;
+                const response = await fetch(apiUrl);
                 
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlContent, "text/html");
-                let resultName = "未知樹木";
-
-                if (url.includes('greening.gov.hk')) {
-                    const allElements = doc.querySelectorAll('div, td, span, p, h1, h2, h3, th');
-                    for (let i = 0; i < allElements.length; i++) {
-                        const text = allElements[i].innerText.trim();
-                        if (text === '學名' || text.includes('Scientific Name') || text === '學名 :') {
-                            for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
-                                const prevText = allElements[j].innerText.replace(/\s+/g, ' ').trim();
-                                if (prevText.length > 0 && prevText.length < 30 && !prevText.includes('名稱') && !prevText.includes('Name')) {
-                                    resultName = prevText;
-                                    break;
-                                }
-                            }
-                            break; 
-                        }
-                    }
-                    if (resultName === "未知樹木") {
-                        const h1 = doc.querySelector('h1');
-                        if (h1 && h1.innerText.trim()) resultName = h1.innerText.trim();
-                    }
+                if (!response.ok) throw new Error("API 回傳錯誤");
+                
+                const data = await response.json();
+                
+                if (data.name && data.name !== "未知樹木") {
+                    // 【重點優化】：利用正規表達式切開頓號、逗號或斜線，只取第一個最標準的樹名
+                    let cleanName = data.name.split(/[,，、/]/)[0].replace(/[（(].*?[）)]/g, '').trim();
+                    return cleanName;
                 } else {
-                    const title = doc.querySelector('title');
-                    if (title) {
-                        const parts = title.innerText.split(/[-|]/);
-                        resultName = parts[parts.length - 1].trim();
-                    }
+                    return null;
                 }
-
-                if (resultName !== "未知樹木") {
-                    resultName = resultName.split(/[,，]/)[0].replace(/[（(].*?[）)]/g, '').trim();
-                }
-                return resultName;
             } catch (error) {
-                console.error("網址解析完全失敗:", error);
+                console.error("呼叫 API 失敗:", error);
                 return null;
             }
         }
-
-        document.getElementById('checkin-btn').addEventListener('click', () => {
-            const today = new Date().toISOString().split('T')[0];
-            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
-            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
-            savePlayerData();
-            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
-        });
 
         function renderCardGallery() {
             const grid = document.getElementById('card-grid'); grid.innerHTML = ''; 
