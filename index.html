@@ -167,11 +167,18 @@
         <button id="leave-park-btn">離開公園</button>
     </div>
 
-    <!-- 掃描 Modals -->
+    <!-- 掃描 Modals --><!-- 掃描 Modals -->
     <div id="real-scan-modal" class="modal">
         <div class="modal-content">
             <h3>掃描樹木 QR Code</h3>
             <div id="reader"></div>
+            
+            <!-- 新增：鏡頭縮放控制項 (預設隱藏，確認手機支援後才顯示) -->
+            <div id="zoom-container">
+                <label for="zoom-slider">🔍 鏡頭縮放</label>
+                <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1">
+            </div>
+
             <p id="scan-message" style="margin:10px 0 0; font-size:13px; color:#666; text-align:center;"></p>
             <div class="modal-buttons"><button class="btn-cancel" id="real-scan-close">關閉</button></div>
         </div>
