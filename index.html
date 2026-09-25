@@ -90,7 +90,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <div id="loading-text">正在載入地圖資料...</div>
+        <div id="loading-text">正在從本機載入樹木資料...</div>
     </div>
 
     <!-- 2D 地圖 -->
@@ -226,8 +226,8 @@
             });
         });
 
-        // ========== 遊戲核心資料與設定 ==========
-        const PARKS_INDEX_URL = './parks_index.json';
+        // ========== 遊戲核心資料與設定 (單一檔案完整載入模式) ==========
+        const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson';
         const STORAGE_KEY = 'dendro_hunter_save';
 
         let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [] };
@@ -273,22 +273,37 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         const playerMarker = L.marker([22.3193, 114.1694], { icon: L.divIcon({ className: 'player-marker', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map);
 
-        async function loadIndexData() {
+        // 直接載入完整的大 JSON 檔案
+        async function loadTreeData() {
             try {
-                const response = await fetch(PARKS_INDEX_URL);
-                if (!response.ok) throw new Error('無法載入索引目錄');
-                parksData = await response.json();
+                const response = await fetch(MAJOR_PARKS_URL);
+                if (!response.ok) throw new Error('無法載入檔案');
+                const data = await response.json();
                 
+                data.features.forEach(f => {
+                    const props = f.properties || {};
+                    const name = props.Location_in_Chinese || props.Location_in_English;
+                    if (!name) return;
+                    const coords = f.geometry.coordinates; 
+                    if (!parksData[name]) parksData[name] = { count: 0, latSum: 0, lngSum: 0, trees: [] };
+                    parksData[name].count += 1; 
+                    parksData[name].lngSum += coords[0]; 
+                    parksData[name].latSum += coords[1];
+                    parksData[name].trees.push({ lat: coords[1], lng: coords[0], chinese: props.Chinese_Name, scientific: props.Scientific_Name });
+                });
+
                 Object.keys(parksData).forEach(name => {
-                    const p = parksData[name];
+                    const p = parksData[name]; 
+                    p.lat = p.latSum/p.count; 
+                    p.lng = p.lngSum/p.count;
                     const marker = L.marker([p.lat, p.lng]).addTo(map);
                     marker.bindPopup(`<div style="min-width:170px"><div style="font-size:16px;font-weight:bold;color:#27ae60;margin-bottom:6px;">🌳 ${name}</div><button class="enter-park-btn" onclick="enterPark('${name.replace(/'/g, "\\'")}')">進入 3D 公園</button></div>`);
                     parkSelect.add(new Option(`${name}`, name));
                 });
                 loadingEl.style.display = 'none';
-                showToast('地圖目錄載入完成');
+                showToast('載入完成，點擊地圖上的公園標記進入');
             } catch (err) {
-                document.getElementById('loading-text').innerHTML = '載入失敗，請確認是否已產生 <b>parks_index.json</b> 檔案。';
+                document.getElementById('loading-text').textContent = '載入失敗，請確認檔案路徑與檔名。';
             }
         }
 
@@ -325,22 +340,10 @@
         const walkSpeed = 0.15; let moveData = { forward: 0, right: 0 };
         const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
         
-        window.enterPark = async function(parkName) {
+        window.enterPark = function(parkName) {
             const park = parksData[parkName]; 
             if (!park) return;
             map.closePopup();
-
-            if (!park.trees) {
-                showToast(`正在下載 ${parkName} 樹木資料...`);
-                try {
-                    const response = await fetch(`./parks/${encodeURIComponent(parkName)}.json`);
-                    if (!response.ok) throw new Error('無法載入獨立檔案');
-                    park.trees = await response.json();
-                } catch (error) {
-                    showToast(`❌ 無法取得 ${parkName} 樹木資料`);
-                    return;
-                }
-            }
 
             currentParkName = parkName; 
             mapDiv.style.display = 'none'; sceneContainer.style.display = 'block';
@@ -591,7 +594,6 @@
                         const extractedName = await fetchTreeNameFromURL(decodedText);
                         modal.classList.remove('show');
                         
-                        // 【防呆機制】：如果解析成功就收集，失敗則自動彈出手動輸入框！
                         if (extractedName && extractedName !== "未知樹木") {
                             collectSpecies(extractedName);
                         } else {
@@ -617,9 +619,9 @@
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
 
-        // 啟動
+        // 啟動 (讀取單一完整檔案)
         loadPlayerData();
-        loadIndexData();
+        loadTreeData();
         startRealGPS();
     </script>
 </body>
