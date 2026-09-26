@@ -38,8 +38,9 @@
         #reset-game-btn { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
         #reset-game-btn:active { transform: scale(0.95); }
 
-        .player-marker { background-color: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(52, 152, 219, 0.9); animation: pulse 1.6s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { transform: scale(1.15); box-shadow: 0 0 0 16px rgba(52, 152, 219, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); } }
+        /* 左下角：回到目前定位按鈕 */
+        #locate-btn { position: absolute; bottom: 20px; left: 16px; z-index: 1000; background: rgba(255,255,255,0.95); border: 2px solid #3498db; border-radius: 50%; width: 48px; height: 48px; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.25); transition: 0.2s; }
+        #locate-btn:active { transform: scale(0.9); }
         
         #loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.78); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; font-size: 18px; gap: 14px; }
         .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #2ecc71; border-radius: 50%; animation: spin 0.9s linear infinite; }
@@ -93,6 +94,7 @@
         .tcg-card .icon { font-size: 32px; margin-bottom: 5px; }
         #card-reveal-content { background: transparent; box-shadow: none; text-align: center; }
         
+        /* 虛擬園圃網格 CSS */
         .garden-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 60vh; overflow-y: auto; padding: 5px; margin-top: 10px;}
         .garden-card { background: linear-gradient(135deg, #e8f8f5, #d1f2eb); border: 2px solid #1abc9c; border-radius: 12px; padding: 12px 8px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .garden-card h4 { margin: 5px 0; color: #16a085; font-size: 15px; }
@@ -118,6 +120,9 @@
 
     <!-- 2D 地圖 -->
     <div id="map"></div>
+
+    <!-- 左下角定位按鈕 -->
+    <button id="locate-btn">🎯</button>
 
     <!-- 3D 虛擬步行場景 -->
     <div id="scene3d-container">
@@ -241,6 +246,7 @@
         const settingsPanel = document.getElementById('settings-panel');
         const switchViewBtn = document.getElementById('switch-view-btn');
         const leaveParkBtn = document.getElementById('leave-park-btn');
+        const locateBtn = document.getElementById('locate-btn');
         const gpsStatusText = document.getElementById('gps-status-text');
         const toastBar = document.getElementById('toast-bar');
         let toastTimeout;
@@ -272,7 +278,14 @@
             });
         });
 
-        // ========== 遊戲核心資料與設定 ==========
+        // 點擊左下角定位按鈕，將畫面拉回真實 GPS 位置 (包含修正左上角 Bug)
+        locateBtn.addEventListener('click', () => {
+            map.invalidateSize();
+            map.flyTo([currentPlayerLat, currentPlayerLng], 17);
+            showToast('📍 已置中目前位置');
+        });
+
+        // ========== 遊戲核心資料與設定 (多檔案延遲載入版) ==========
         const PARKS_INDEX_URL = './parks_index.json'; 
         const STORAGE_KEY = 'dendro_hunter_save';
 
@@ -284,6 +297,8 @@
         let watchId = null;
         let currentPlayerLat = 22.3193;
         let currentPlayerLng = 114.1694;
+        let is3DView = true;
+        let isFirstGpsLock = true; 
 
         const loadingEl = document.getElementById('loading');
         const parkSelect = document.getElementById('park-select');
@@ -316,7 +331,7 @@
         }
 
         document.getElementById('reset-game-btn').addEventListener('click', () => {
-            const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料嗎？此動作無法復原！");
+            const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料（包含收集的卡牌、肥料與園圃進度）嗎？此動作無法復原！");
             if (confirmReset) {
                 localStorage.removeItem(STORAGE_KEY); 
                 playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
@@ -330,11 +345,13 @@
         const map = L.map('map').setView([22.3193, 114.1694], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         
-        // 兩個專屬圖層群組，用來在「大世界」和「公園內部 2D 地圖」之間切換
         const parksLayerGroup = L.layerGroup().addTo(map);
         const treesLayerGroup = L.layerGroup(); 
-        
-        const playerMarker = L.marker([22.3193, 114.1694], { icon: L.divIcon({ className: 'player-marker', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map);
+
+        // 顯示 3D 虛擬漫遊位置的小紅點
+        const virtualPlayerMarker = L.circleMarker([22.3193, 114.1694], {
+            radius: 7, color: '#fff', weight: 2, fillColor: '#e74c3c', fillOpacity: 1, zIndexOffset: 2000
+        }).bindPopup("<b>🚶 你的虛擬位置</b>");
 
         async function loadIndexData() {
             try {
@@ -356,6 +373,7 @@
                 });
                 
                 loadingEl.style.display = 'none';
+                map.invalidateSize(); 
                 showToast('地圖目錄載入完成！點擊地圖上的標記開始探索。');
             } catch (err) {
                 document.getElementById('loading-text').innerHTML = '載入失敗，請確認 parks_index.json 是否已產生。';
@@ -395,9 +413,8 @@
         let scene3D, camera3D, renderer3D, animationId3D, joystickManager;
         const walkSpeed = 0.15; let moveData = { forward: 0, right: 0 };
         const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
-        let is3DView = true; // 追蹤目前是在 3D 還是公園 2D 狀態
         
-        // ========== 進入單一公園 ==========
+        // ========== 進入單一公園 (包含動態下載) ==========
         window.enterPark = async function(parkName) {
             const park = parksData[parkName]; 
             if (!park) return;
@@ -417,14 +434,13 @@
             }
 
             currentParkName = parkName; 
-            is3DView = true; // 預設進入 3D 模式
+            is3DView = true;
             
-            // 繪製公園內部的 2D 樹木圖層 (用顏色區分是否收集過)
             treesLayerGroup.clearLayers();
             park.trees.forEach(tree => {
                 if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
                     const isCollected = playerData.collectedSpecies.includes(tree.chinese);
-                    const circleColor = isCollected ? '#2ecc71' : '#bdc3c7'; // 綠色(已收集) vs 灰色(未收集)
+                    const circleColor = isCollected ? '#2ecc71' : '#bdc3c7'; 
                     
                     const circle = L.circleMarker([tree.lat, tree.lng], {
                         radius: 6, color: '#fff', weight: 1.5, fillColor: circleColor, fillOpacity: 0.9
@@ -434,82 +450,51 @@
                 }
             });
 
-            // 切換 Leaflet 圖層：隱藏大世界，顯示樹木
+            virtualPlayerMarker.addTo(treesLayerGroup);
+
             map.removeLayer(parksLayerGroup);
             map.addLayer(treesLayerGroup);
-            map.setView([park.lat, park.lng], 18); // 鏡頭拉近到該公園
-
-            // 介面切換
+            map.setView([park.lat, park.lng], 18); 
+            
             mapDiv.style.display = 'none'; 
             sceneContainer.style.display = 'block';
-            settingsPanel.classList.remove('show'); 
-            settingsBtn.style.display = 'none'; 
-            
-            // 顯示右上角的公園內部控制按鈕
+            locateBtn.style.display = 'none'; 
             switchViewBtn.style.display = 'block';
             switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈'; 
             leaveParkBtn.style.display = 'block';
             document.getElementById('crosshair').style.display = 'block'; 
+            settingsPanel.classList.remove('show'); settingsBtn.style.display = 'none'; 
             
             init3DScene(parkName, park);
         };
-
-        // ========== 切換 2D/3D 視角 ==========
+        
         switchViewBtn.addEventListener('click', () => {
             is3DView = !is3DView;
             if (is3DView) {
-                // 切換回 3D 虛擬漫遊
                 mapDiv.style.display = 'none';
                 sceneContainer.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'block';
+                locateBtn.style.display = 'none'; 
                 switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈';
             } else {
-                // 切換到 2D 樹木地圖
                 sceneContainer.style.display = 'none';
                 mapDiv.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'none';
+                locateBtn.style.display = 'flex'; 
                 switchViewBtn.innerHTML = '🚶‍♂️ 3D 虛擬漫遊';
                 
-                // 強制 Leaflet 重新渲染 (因為原本隱藏著，避免破圖)
-                setTimeout(() => map.invalidateSize(), 100);
+                setTimeout(() => {
+                    map.invalidateSize();
+                    map.setView(virtualPlayerMarker.getLatLng(), 19);
+                }, 100);
             }
         });
 
-        // ========== 離開公園 (返回大世界地圖) ==========
-        leaveParkBtn.addEventListener('click', () => {
-            // 停止 3D 渲染
-            cancelAnimationFrame(animationId3D); 
-            document.getElementById('scene3d').innerHTML = ''; 
-            if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
-            
-            // UI 復原
-            sceneContainer.style.display = 'none'; 
-            mapDiv.style.display = 'block'; 
-            switchViewBtn.style.display = 'none'; 
-            leaveParkBtn.style.display = 'none';
-            document.getElementById('crosshair').style.display = 'none'; 
-            document.getElementById('tree-info-panel').style.display = 'none';
-            settingsBtn.style.display = 'block';
-            
-            // 圖層切換：移除樹木，顯示大世界公園
-            map.removeLayer(treesLayerGroup);
-            map.addLayer(parksLayerGroup);
-            map.setView([currentPlayerLat, currentPlayerLng], 12); // 將鏡頭拉回玩家所在位置
-            setTimeout(() => map.invalidateSize(), 100);
-            
-            currentParkName = null;
-            showToast('已離開公園');
-        });
-
-        // ========== 3D 場景初始化 ==========
         function init3DScene(parkName, park) {
             try {
                 const sceneDiv = document.getElementById('scene3d');
-                sceneDiv.innerHTML = ''; // 確保乾淨
-                scene3D = new THREE.Scene(); 
-                scene3D.background = new THREE.Color(0x87CEEB); 
-                scene3D.fog = new THREE.Fog(0x87CEEB, 10, 150);
-                
+                sceneDiv.innerHTML = ''; 
+                scene3D = new THREE.Scene(); scene3D.background = new THREE.Color(0x87CEEB); scene3D.fog = new THREE.Fog(0x87CEEB, 10, 150);
                 camera3D = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 camera3D.rotation.order = 'YXZ'; 
 
@@ -520,43 +505,33 @@
                 
                 if (isNaN(startX)) startX = 0;
                 if (isNaN(startZ)) startZ = 0;
-
+                
                 const distanceFromCenter = Math.sqrt(startX * startX + startZ * startZ);
                 if (isMockGps || distanceFromCenter > 500) { startX = 0; startZ = 0; }
                 camera3D.position.set(startX, 1.7, startZ); 
 
-                renderer3D = new THREE.WebGLRenderer({ antialias: false }); 
-                renderer3D.setSize(window.innerWidth, window.innerHeight);
+                renderer3D = new THREE.WebGLRenderer({ antialias: false }); renderer3D.setSize(window.innerWidth, window.innerHeight);
+                renderer3D.setClearColor(0x87CEEB);
                 sceneDiv.appendChild(renderer3D.domElement);
 
                 scene3D.add(new THREE.AmbientLight(0xffffff, 0.7));
-                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); 
-                dirLight.position.set(10, 20, 10); 
-                scene3D.add(dirLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene3D.add(dirLight);
 
                 createMapFloor(scene3D, park.lat, park.lng);
 
-                const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8); 
-                const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
-                const leavesGeo = new THREE.ConeGeometry(1.5, 3.5, 8); 
-                const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
+                const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8); const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+                const leavesGeo = new THREE.ConeGeometry(1.5, 3.5, 8); const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
 
                 if (Array.isArray(park.trees)) {
                     park.trees.slice(0, 300).forEach(tree => {
                         if (typeof tree.lng !== 'number' || typeof tree.lat !== 'number') return;
-                        
-                        const x = (tree.lng - park.lng) * lngScale; 
-                        const z = -(tree.lat - park.lat) * latScale;
-                        
+                        const x = (tree.lng - park.lng) * lngScale; const z = -(tree.lat - park.lat) * latScale;
                         const treeGroup = new THREE.Group();
                         const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 1; 
                         const leaves = new THREE.Mesh(leavesGeo, leavesMat); leaves.position.y = 3.5; 
                         const treeData = { chinese: tree.chinese, scientific: tree.scientific };
-                        
                         trunk.userData = treeData; leaves.userData = treeData;
-                        treeGroup.add(trunk); treeGroup.add(leaves); 
-                        treeGroup.position.set(x, 0, z); 
-                        scene3D.add(treeGroup);
+                        treeGroup.add(trunk); treeGroup.add(leaves); treeGroup.position.set(x, 0, z); scene3D.add(treeGroup);
                     });
                 }
 
@@ -580,15 +555,19 @@
                     animationId3D = requestAnimationFrame(animate);
                     camera3D.getWorldDirection(dir); dir.y = 0; dir.normalize(); right.crossVectors(camera3D.up, dir).normalize();
                     if (moveData.forward !== 0 || moveData.right !== 0) { camera3D.position.addScaledVector(dir, moveData.forward * walkSpeed); camera3D.position.addScaledVector(right, -moveData.right * walkSpeed); }
+                    
+                    const virtualLng = park.lng + (camera3D.position.x / lngScale);
+                    const virtualLat = park.lat - (camera3D.position.z / latScale);
+                    virtualPlayerMarker.setLatLng([virtualLat, virtualLng]);
+
                     renderer3D.render(scene3D, camera3D);
                 }
                 animate();
                 showToast(`已成功進入「${parkName}」`);
-
             } catch (error) {
                 console.error("3D 渲染失敗:", error);
                 showToast("3D 場景載入失敗，已切換回 2D 模式");
-                switchViewBtn.click(); // 自動切換回 2D
+                switchViewBtn.click(); 
             }
         }
 
@@ -609,6 +588,26 @@
             panel.style.display = 'none';
         }
 
+        document.getElementById('leave-park-btn').addEventListener('click', () => {
+            cancelAnimationFrame(animationId3D); document.getElementById('scene3d').innerHTML = ''; if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
+            sceneContainer.style.display = 'none'; mapDiv.style.display = 'block'; 
+            switchViewBtn.style.display = 'none'; leaveParkBtn.style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none'; document.getElementById('tree-info-panel').style.display = 'none';
+            settingsBtn.style.display = 'block';
+            locateBtn.style.display = 'flex'; 
+            
+            map.removeLayer(treesLayerGroup);
+            map.addLayer(parksLayerGroup);
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                map.setView([currentPlayerLat, currentPlayerLng], 16); 
+            }, 100);
+            
+            currentParkName = null;
+            showToast('已離開公園');
+        });
+
         // ========== GPS 設定與更新 ==========
         document.getElementById('mock-gps-toggle').addEventListener('change', (e) => {
             isMockGps = e.target.checked; parkSelect.disabled = !isMockGps;
@@ -622,7 +621,7 @@
             if (isMockGps && e.target.value) {
                 const p = parksData[e.target.value];
                 currentPlayerLat = p.lat; currentPlayerLng = p.lng;
-                playerMarker.setLatLng([p.lat, p.lng]); map.flyTo([p.lat, p.lng], 16);
+                map.flyTo([p.lat, p.lng], 16);
             }
         });
 
@@ -635,7 +634,13 @@
                 (pos) => {
                     if (isMockGps) return;
                     currentPlayerLat = pos.coords.latitude; currentPlayerLng = pos.coords.longitude;
-                    playerMarker.setLatLng([currentPlayerLat, currentPlayerLng]);
+                    
+                    if (isFirstGpsLock) {
+                        map.invalidateSize(); 
+                        map.setView([currentPlayerLat, currentPlayerLng], 16);
+                        isFirstGpsLock = false;
+                    }
+
                     gpsStatusText.innerHTML = `<span style="color:#27ae60;font-weight:bold;">🟢 成功</span><br><small>Lat: ${currentPlayerLat.toFixed(4)}<br>Lng: ${currentPlayerLng.toFixed(4)}</small>`;
                 },
                 (err) => {
@@ -667,7 +672,6 @@
                 document.getElementById('reveal-card-name').textContent = speciesName;
                 document.getElementById('card-reveal-modal').classList.add('show');
                 
-                // 如果目前在 2D 樹木地圖模式，重新繪製以更新綠色狀態
                 if (currentParkName && !is3DView) {
                     enterPark(currentParkName);
                 }
@@ -679,9 +683,10 @@
             try {
                 const apiUrl = `https://dendro-hunter.vercel.app/api/get-tree?url=${encodeURIComponent(url)}`;
                 const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error("API 回傳錯誤");
                 
+                if (!response.ok) throw new Error("API 回傳錯誤");
                 const data = await response.json();
+                
                 if (data.name && data.name !== "未知樹木") {
                     let cleanName = data.name.split(/[,，、/]/)[0].replace(/[（(].*?[）)]/g, '').trim();
                     return cleanName;
@@ -695,11 +700,36 @@
         }
 
         document.getElementById('checkin-btn').addEventListener('click', () => {
-            const today = new Date().toISOString().split('T')[0];
-            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
-            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
+
+            if (playerData.lastCheckinDate === today) { 
+                showToast('今日已經簽到過了！'); 
+                return; 
+            }
+
+            if (playerData.lastCheckinDate) {
+                const lastDate = new Date(playerData.lastCheckinDate);
+                const currentDate = new Date(today);
+                const diffDays = Math.round((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    playerData.streak += 1; 
+                } else {
+                    playerData.streak = 1; 
+                }
+            } else {
+                playerData.streak = 1; 
+            }
+
+            playerData.fertilizer += 1; 
+            playerData.lastCheckinDate = today; 
+            
             savePlayerData();
-            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
+            showToast(`✅ 簽到成功！獲得 1 袋肥料 🌱\n連續簽到 ${playerData.streak} 天`);
         });
 
         function renderGarden() {
@@ -753,7 +783,8 @@
         };
 
         document.getElementById('garden-btn').addEventListener('click', () => { 
-            renderGarden(); document.getElementById('garden-modal').classList.add('show'); 
+            renderGarden(); 
+            document.getElementById('garden-modal').classList.add('show'); 
         });
         document.getElementById('close-garden-btn').addEventListener('click', () => { 
             document.getElementById('garden-modal').classList.remove('show'); 
@@ -774,7 +805,6 @@
         document.getElementById('close-collection-btn').addEventListener('click', () => { document.getElementById('collection-modal').classList.remove('show'); });
         document.getElementById('close-reveal-btn').addEventListener('click', () => { document.getElementById('card-reveal-modal').classList.remove('show'); });
 
-        // 支援 Zoom 的真實相機掃描
         document.getElementById('real-scan-btn').addEventListener('click', async () => {
             const modal = document.getElementById('real-scan-modal');
             const msg = document.getElementById('scan-message');
@@ -847,12 +877,11 @@
             document.getElementById('zoom-container').style.display = 'none';
             document.getElementById('real-scan-modal').classList.remove('show'); 
         });
-
         document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
 
-        // 啟動 (載入輕量級目錄)
+        // 啟動
         loadPlayerData();
         loadIndexData();
         startRealGPS();
