@@ -692,13 +692,41 @@
         }
 
         document.getElementById('checkin-btn').addEventListener('click', () => {
-            const today = new Date().toISOString().split('T')[0];
-            if (playerData.lastCheckinDate === today) { showToast('今日已經簽到過了！'); return; }
-            playerData.fertilizer += 1; playerData.lastCheckinDate = today; playerData.streak += 1;
-            savePlayerData();
-            showToast(`簽到成功！獲得 1 袋肥料 🌱`);
-        });
+            // 取得本地時區的正確日期，避免 UTC 時差導致過凌晨 12 點還無法簽到
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
 
+            if (playerData.lastCheckinDate === today) { 
+                showToast('今日已經簽到過了！'); 
+                return; 
+            }
+
+            // 計算連續簽到天數邏輯
+            if (playerData.lastCheckinDate) {
+                // 將日期字串轉回時間戳來計算相差天數
+                const lastDate = new Date(playerData.lastCheckinDate);
+                const currentDate = new Date(today);
+                const diffDays = Math.round((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    playerData.streak += 1; // 剛好隔天，連續天數 +1
+                } else {
+                    playerData.streak = 1; // 漏簽了，連續天數重置為 1
+                }
+            } else {
+                playerData.streak = 1; // 第一次簽到
+            }
+
+            playerData.fertilizer += 1; 
+            playerData.lastCheckinDate = today; 
+            
+            savePlayerData();
+            showToast(`✅ 簽到成功！獲得 1 袋肥料 🌱\n連續簽到 ${playerData.streak} 天`);
+        });
+        
         function renderGarden() {
             const grid = document.getElementById('garden-grid');
             grid.innerHTML = '';
