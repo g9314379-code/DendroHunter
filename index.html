@@ -22,7 +22,7 @@
         #tree-info-panel h4 { margin: 0 0 5px 0; color: #27ae60; font-size: 18px; }
         #tree-info-panel p { margin: 0; color: #555; font-size: 13px; font-style: italic; }
 
-        /* 右上角按鈕群 (設定、視角切換、離開) */
+        /* 右上角按鈕群 */
         #settings-btn { position: absolute; top: 12px; right: 12px; z-index: 1000; background: rgba(255, 255, 255, 0.95); border: 2px solid #27ae60; padding: 10px 14px; border-radius: 12px; font-size: 15px; font-weight: bold; color: #27ae60; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
         .top-right-btn { display: none; position: absolute; right: 12px; z-index: 1000; color: white; border: none; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         #switch-view-btn { top: 12px; background: #3498db; border: 2px solid #2980b9; }
@@ -38,8 +38,9 @@
         #reset-game-btn { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
         #reset-game-btn:active { transform: scale(0.95); }
 
-        .player-marker { background-color: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(52, 152, 219, 0.9); animation: pulse 1.6s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { transform: scale(1.15); box-shadow: 0 0 0 16px rgba(52, 152, 219, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); } }
+        /* 左下角：回到目前定位按鈕 */
+        #locate-btn { position: absolute; bottom: 20px; left: 16px; z-index: 1000; background: rgba(255,255,255,0.95); border: 2px solid #3498db; border-radius: 50%; width: 48px; height: 48px; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.25); transition: 0.2s; }
+        #locate-btn:active { transform: scale(0.9); }
         
         #loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.78); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; font-size: 18px; gap: 14px; }
         .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #2ecc71; border-radius: 50%; animation: spin 0.9s linear infinite; }
@@ -79,6 +80,13 @@
         .btn-cancel { background: #bdc3c7; color: #2c3e50; }
         .enter-park-btn { margin-top: 10px; width: 100%; padding: 8px 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
 
+        /* 鏡頭縮放拉桿專屬樣式 */
+        #zoom-container { display: none; margin-top: 15px; text-align: center; width: 100%; }
+        #zoom-container label { color: #27ae60; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 12px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #27ae60; cursor: pointer; margin-top: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #bdc3c7; border-radius: 3px; }
+
         /* 卡牌與園圃系統 CSS */
         .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 5px; }
         .tcg-card { background: linear-gradient(135deg, #2ecc71, #27ae60); border: 2px solid #f1c40f; border-radius: 8px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; padding: 5px; }
@@ -86,7 +94,6 @@
         .tcg-card .icon { font-size: 32px; margin-bottom: 5px; }
         #card-reveal-content { background: transparent; box-shadow: none; text-align: center; }
         
-        /* 虛擬園圃網格 CSS */
         .garden-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 60vh; overflow-y: auto; padding: 5px; margin-top: 10px;}
         .garden-card { background: linear-gradient(135deg, #e8f8f5, #d1f2eb); border: 2px solid #1abc9c; border-radius: 12px; padding: 12px 8px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .garden-card h4 { margin: 5px 0; color: #16a085; font-size: 15px; }
@@ -112,6 +119,9 @@
 
     <!-- 2D 地圖 -->
     <div id="map"></div>
+
+    <!-- 左下角定位按鈕 -->
+    <button id="locate-btn">🎯</button>
 
     <!-- 3D 虛擬步行場景 -->
     <div id="scene3d-container">
@@ -146,7 +156,6 @@
             <label for="park-select">傳送玩家至公園：</label>
             <select id="park-select" disabled><option value="">-- 請先開啟虛擬 GPS --</option></select>
         </div>
-        <!-- 這是新加入的重設遊戲按鈕 -->
         <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
         <button id="reset-game-btn">🗑️ 重設遊戲資料</button>
     </div>
@@ -169,6 +178,12 @@
         <div class="modal-content">
             <h3>掃描樹木 QR Code</h3>
             <div id="reader"></div>
+            
+            <div id="zoom-container">
+                <label for="zoom-slider">🔍 鏡頭縮放</label>
+                <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1">
+            </div>
+
             <p id="scan-message" style="margin:10px 0 0; font-size:13px; color:#666; text-align:center;"></p>
             <div class="modal-buttons"><button class="btn-cancel" id="real-scan-close">關閉</button></div>
         </div>
@@ -176,7 +191,7 @@
 
     <div id="scan-modal" class="modal">
         <div class="modal-content">
-            <h3>手 পণ্ডিত</h3>
+            <h3>手動輸入樹木名稱</h3>
             <p style="margin:0 0 12px 0; color:#666; font-size:14px;">請看著樹木標籤，輸入中文品種名稱</p>
             <input type="text" id="species-input" placeholder="例如：細葉榕、鳳凰木" autocomplete="off">
             <div class="modal-buttons">
@@ -230,6 +245,7 @@
         const settingsPanel = document.getElementById('settings-panel');
         const switchViewBtn = document.getElementById('switch-view-btn');
         const leaveParkBtn = document.getElementById('leave-park-btn');
+        const locateBtn = document.getElementById('locate-btn');
         const gpsStatusText = document.getElementById('gps-status-text');
         const toastBar = document.getElementById('toast-bar');
         let toastTimeout;
@@ -261,8 +277,16 @@
             });
         });
 
+        // 點擊左下角定位按鈕，將畫面拉回真實 GPS 位置 (包含修正左上角 Bug)
+        locateBtn.addEventListener('click', () => {
+            map.invalidateSize();
+            map.flyTo([currentPlayerLat, currentPlayerLng], 17);
+            showToast('📍 已置中目前位置');
+        });
+
         // ========== 遊戲核心資料與設定 ==========
-        const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson';
+        // 已確保還原為原始的長檔案名稱
+        const MAJOR_PARKS_URL = './Trees_Major_Parks_Trees_Major_Parks_converted.geojson'; 
         const STORAGE_KEY = 'dendro_hunter_save';
 
         let playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
@@ -274,6 +298,7 @@
         let currentPlayerLat = 22.3193;
         let currentPlayerLng = 114.1694;
         let is3DView = true;
+        let isFirstGpsLock = true; 
 
         const loadingEl = document.getElementById('loading');
         const parkSelect = document.getElementById('park-select');
@@ -305,12 +330,10 @@
             document.getElementById('species-count').textContent = `📖 已收集：${playerData.collectedSpecies.length} 種`;
         }
 
-        // 新增：重設遊戲進度按鈕事件
         document.getElementById('reset-game-btn').addEventListener('click', () => {
             const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料（包含收集的卡牌、肥料與園圃進度）嗎？此動作無法復原！");
             if (confirmReset) {
-                localStorage.removeItem(STORAGE_KEY); // 清除本機儲存
-                // 恢復為預設空白資料
+                localStorage.removeItem(STORAGE_KEY); 
                 playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
                 updateUI();
                 settingsPanel.classList.remove('show');
@@ -318,14 +341,17 @@
             }
         });
 
-        // ========== 地圖架構 (雙圖層：大世界公園 / 單一公園樹木) ==========
+        // ========== 地圖架構 (雙圖層) ==========
         const map = L.map('map').setView([22.3193, 114.1694], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         
         const parksLayerGroup = L.layerGroup().addTo(map);
         const treesLayerGroup = L.layerGroup(); 
-        
-        const playerMarker = L.marker([22.3193, 114.1694], { icon: L.divIcon({ className: 'player-marker', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map);
+
+        // 顯示 3D 虛擬漫遊位置的小紅點
+        const virtualPlayerMarker = L.circleMarker([22.3193, 114.1694], {
+            radius: 7, color: '#fff', weight: 2, fillColor: '#e74c3c', fillOpacity: 1, zIndexOffset: 2000
+        }).bindPopup("<b>🚶 你的虛擬位置</b>");
 
         async function loadTreeData() {
             try {
@@ -354,6 +380,7 @@
                     parkSelect.add(new Option(`${name}`, name));
                 });
                 loadingEl.style.display = 'none';
+                map.invalidateSize(); 
                 showToast('載入完成，點擊地圖上的公園標記進入');
             } catch (err) {
                 document.getElementById('loading-text').textContent = '載入失敗，請確認檔案路徑與檔名。';
@@ -401,7 +428,6 @@
             currentParkName = parkName; 
             is3DView = true;
             
-            // 繪製公園內部的 2D 樹木圖層
             treesLayerGroup.clearLayers();
             park.trees.forEach(tree => {
                 if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
@@ -416,13 +442,15 @@
                 }
             });
 
-            // 切換 Leaflet 圖層
+            virtualPlayerMarker.addTo(treesLayerGroup);
+
             map.removeLayer(parksLayerGroup);
             map.addLayer(treesLayerGroup);
             map.setView([park.lat, park.lng], 18); 
             
-            // 介面切換
-            mapDiv.style.display = 'none'; sceneContainer.style.display = 'block';
+            mapDiv.style.display = 'none'; 
+            sceneContainer.style.display = 'block';
+            locateBtn.style.display = 'none'; 
             switchViewBtn.style.display = 'block';
             switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈'; 
             leaveParkBtn.style.display = 'block';
@@ -438,13 +466,19 @@
                 mapDiv.style.display = 'none';
                 sceneContainer.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'block';
+                locateBtn.style.display = 'none'; 
                 switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈';
             } else {
                 sceneContainer.style.display = 'none';
                 mapDiv.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'none';
+                locateBtn.style.display = 'flex'; 
                 switchViewBtn.innerHTML = '🚶‍♂️ 3D 虛擬漫遊';
-                setTimeout(() => map.invalidateSize(), 100);
+                
+                setTimeout(() => {
+                    map.invalidateSize();
+                    map.setView(virtualPlayerMarker.getLatLng(), 19);
+                }, 100);
             }
         });
 
@@ -513,6 +547,11 @@
                     animationId3D = requestAnimationFrame(animate);
                     camera3D.getWorldDirection(dir); dir.y = 0; dir.normalize(); right.crossVectors(camera3D.up, dir).normalize();
                     if (moveData.forward !== 0 || moveData.right !== 0) { camera3D.position.addScaledVector(dir, moveData.forward * walkSpeed); camera3D.position.addScaledVector(right, -moveData.right * walkSpeed); }
+                    
+                    const virtualLng = park.lng + (camera3D.position.x / lngScale);
+                    const virtualLat = park.lat - (camera3D.position.z / latScale);
+                    virtualPlayerMarker.setLatLng([virtualLat, virtualLng]);
+
                     renderer3D.render(scene3D, camera3D);
                 }
                 animate();
@@ -547,11 +586,15 @@
             switchViewBtn.style.display = 'none'; leaveParkBtn.style.display = 'none';
             document.getElementById('crosshair').style.display = 'none'; document.getElementById('tree-info-panel').style.display = 'none';
             settingsBtn.style.display = 'block';
+            locateBtn.style.display = 'flex'; 
             
             map.removeLayer(treesLayerGroup);
             map.addLayer(parksLayerGroup);
-            map.setView([currentPlayerLat, currentPlayerLng], 12); 
-            setTimeout(() => map.invalidateSize(), 100);
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                map.setView([currentPlayerLat, currentPlayerLng], 16); 
+            }, 100);
             
             currentParkName = null;
             showToast('已離開公園');
@@ -570,7 +613,7 @@
             if (isMockGps && e.target.value) {
                 const p = parksData[e.target.value];
                 currentPlayerLat = p.lat; currentPlayerLng = p.lng;
-                playerMarker.setLatLng([p.lat, p.lng]); map.flyTo([p.lat, p.lng], 16);
+                map.flyTo([p.lat, p.lng], 16);
             }
         });
 
@@ -583,7 +626,13 @@
                 (pos) => {
                     if (isMockGps) return;
                     currentPlayerLat = pos.coords.latitude; currentPlayerLng = pos.coords.longitude;
-                    playerMarker.setLatLng([currentPlayerLat, currentPlayerLng]);
+                    
+                    if (isFirstGpsLock) {
+                        map.invalidateSize(); 
+                        map.setView([currentPlayerLat, currentPlayerLng], 16);
+                        isFirstGpsLock = false;
+                    }
+
                     gpsStatusText.innerHTML = `<span style="color:#27ae60;font-weight:bold;">🟢 成功</span><br><small>Lat: ${currentPlayerLat.toFixed(4)}<br>Lng: ${currentPlayerLng.toFixed(4)}</small>`;
                 },
                 (err) => {
@@ -624,7 +673,6 @@
 
         async function fetchTreeNameFromURL(url) {
             try {
-                // 修改為呼叫 Vercel API
                 const apiUrl = `https://dendro-hunter.vercel.app/api/get-tree?url=${encodeURIComponent(url)}`;
                 const response = await fetch(apiUrl);
                 
@@ -727,15 +775,22 @@
         document.getElementById('real-scan-btn').addEventListener('click', async () => {
             const modal = document.getElementById('real-scan-modal');
             const msg = document.getElementById('scan-message');
+            const zoomContainer = document.getElementById('zoom-container');
+            const zoomSlider = document.getElementById('zoom-slider');
+            
             modal.classList.add('show');
             msg.innerHTML = '正在請求相機權限...';
+            zoomContainer.style.display = 'none';
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 stream.getTracks().forEach(track => track.stop());
                 msg.innerHTML = '相機啟動中...';
                 html5QrCode = new Html5Qrcode("reader");
+                
                 await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (decodedText) => {
                     html5QrCode.stop().catch(()=>{}); 
+                    zoomContainer.style.display = 'none';
                     
                     if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
                         msg.innerHTML = '正在分析網址中的樹木資料...<br><div class="spinner" style="margin:10px auto; width:24px; height:24px;"></div>';
@@ -754,7 +809,29 @@
                         collectSpecies(decodedText);
                     }
                 }, () => {});
+                
                 msg.innerHTML = '請將鏡頭對準樹上的 QR Code';
+
+                setTimeout(() => {
+                    const videoElement = document.querySelector('#reader video');
+                    if (videoElement && videoElement.srcObject) {
+                        const track = videoElement.srcObject.getVideoTracks()[0];
+                        const capabilities = track.getCapabilities();
+                        if (capabilities.zoom) {
+                            zoomSlider.min = capabilities.zoom.min || 1;
+                            zoomSlider.max = capabilities.zoom.max || 5;
+                            zoomSlider.step = capabilities.zoom.step || 0.1;
+                            zoomSlider.value = track.getSettings().zoom || 1;
+                            zoomContainer.style.display = 'block';
+
+                            zoomSlider.oninput = async (e) => {
+                                try { await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] }); } 
+                                catch (err) { console.warn("無法應用縮放:", err); }
+                            };
+                        }
+                    }
+                }, 500);
+
             } catch (err) {
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 您拒絕了相機權限</span><br>請在瀏覽器設定中重新允許。';
                 else if (!window.isSecureContext) msg.innerHTML = '<span style="color:#e74c3c; font-weight:bold;">❌ 瀏覽器安全限制</span><br>必須使用 HTTPS';
@@ -762,7 +839,11 @@
             }
         });
 
-        document.getElementById('real-scan-close').addEventListener('click', () => { if (html5QrCode) html5QrCode.stop().catch(()=>{}); document.getElementById('real-scan-modal').classList.remove('show'); });
+        document.getElementById('real-scan-close').addEventListener('click', () => { 
+            if (html5QrCode) html5QrCode.stop().catch(()=>{}); 
+            document.getElementById('zoom-container').style.display = 'none';
+            document.getElementById('real-scan-modal').classList.remove('show'); 
+        });
         document.getElementById('scan-btn').addEventListener('click', () => { document.getElementById('species-input').value = ''; document.getElementById('scan-modal').classList.add('show'); });
         document.getElementById('scan-cancel').addEventListener('click', () => document.getElementById('scan-modal').classList.remove('show'));
         document.getElementById('scan-confirm').addEventListener('click', () => { const input = document.getElementById('species-input').value.trim(); if (input) { collectSpecies(input); document.getElementById('scan-modal').classList.remove('show'); } });
