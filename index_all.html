@@ -22,10 +22,12 @@
         #tree-info-panel h4 { margin: 0 0 5px 0; color: #27ae60; font-size: 18px; }
         #tree-info-panel p { margin: 0; color: #555; font-size: 13px; font-style: italic; }
 
-        /* 設定按鈕與 2D 切換按鈕 */
+        /* 右上角按鈕群 (設定、視角切換、離開) */
         #settings-btn { position: absolute; top: 12px; right: 12px; z-index: 1000; background: rgba(255, 255, 255, 0.95); border: 2px solid #27ae60; padding: 10px 14px; border-radius: 12px; font-size: 15px; font-weight: bold; color: #27ae60; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
-        #switch-2d-btn { display: none; position: absolute; top: 12px; right: 12px; z-index: 1000; background: #3498db; color: white; border: 2px solid #2980b9; padding: 10px 14px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        
+        .top-right-btn { display: none; position: absolute; right: 12px; z-index: 1000; color: white; border: none; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #switch-view-btn { top: 12px; background: #3498db; border: 2px solid #2980b9; }
+        #leave-park-btn { top: 60px; background: #e74c3c; border: 2px solid #c0392b; }
+
         #settings-panel { display: none; position: absolute; top: 65px; right: 12px; background: rgba(255, 255, 255, 0.96); padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18); z-index: 1000; width: 280px; border: 2px solid #27ae60; font-size: 14px; }
         #settings-panel.show { display: block; }
         #settings-panel h3 { margin: 0 0 12px 0; color: #1e8449; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px;}
@@ -77,14 +79,14 @@
         .btn-cancel { background: #bdc3c7; color: #2c3e50; }
         .enter-park-btn { margin-top: 10px; width: 100%; padding: 8px 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
 
-        /* 鏡頭縮放拉桿 */
+        /* 鏡頭縮放拉桿專屬樣式 */
         #zoom-container { display: none; margin-top: 15px; text-align: center; width: 100%; }
         #zoom-container label { color: #27ae60; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 12px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #27ae60; cursor: pointer; margin-top: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #bdc3c7; border-radius: 3px; }
 
-        /* 卡牌與園圃系統 */
+        /* 卡牌與園圃系統 CSS */
         .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 5px; }
         .tcg-card { background: linear-gradient(135deg, #2ecc71, #27ae60); border: 2px solid #f1c40f; border-radius: 8px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; padding: 5px; }
         .tcg-card.locked { background: #bdc3c7; border-color: #95a5a6; color: #7f8c8d; }
@@ -132,9 +134,10 @@
         <div id="species-count">📖 已收集：0 種</div>
     </div>
 
-    <!-- 右上角：設定按鈕與 2D 切換按鈕 -->
+    <!-- 右上角：設定與公園內部導航按鈕 -->
     <button id="settings-btn">⚙️ 設定</button>
-    <button id="switch-2d-btn">🗺️ 返回 2D 地圖</button>
+    <button id="switch-view-btn" class="top-right-btn">🗺️ 2D 樹木分佈</button>
+    <button id="leave-park-btn" class="top-right-btn">🚪 離開公園</button>
 
     <div id="settings-panel">
         <h3>⚙️ 系統設定</h3>
@@ -236,7 +239,8 @@
         // ========== UI 互動與 Toast 提示系統 ==========
         const settingsBtn = document.getElementById('settings-btn');
         const settingsPanel = document.getElementById('settings-panel');
-        const switch2dBtn = document.getElementById('switch-2d-btn');
+        const switchViewBtn = document.getElementById('switch-view-btn');
+        const leaveParkBtn = document.getElementById('leave-park-btn');
         const gpsStatusText = document.getElementById('gps-status-text');
         const toastBar = document.getElementById('toast-bar');
         let toastTimeout;
@@ -268,7 +272,7 @@
             });
         });
 
-        // ========== 遊戲核心資料與設定 (動態載入架構) ==========
+        // ========== 遊戲核心資料與設定 ==========
         const PARKS_INDEX_URL = './parks_index.json'; 
         const STORAGE_KEY = 'dendro_hunter_save';
 
@@ -312,7 +316,7 @@
         }
 
         document.getElementById('reset-game-btn').addEventListener('click', () => {
-            const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料（包含卡牌、肥料與園圃進度）嗎？此動作無法復原！");
+            const confirmReset = confirm("⚠️ 警告：確定要刪除所有遊戲資料嗎？此動作無法復原！");
             if (confirmReset) {
                 localStorage.removeItem(STORAGE_KEY); 
                 playerData = { fertilizer: 0, lastCheckinDate: null, streak: 0, totalCheckins: 0, collectedSpecies: [], treeLevels: {} };
@@ -322,9 +326,14 @@
             }
         });
 
-        // ========== 地圖與 3D 系統 (動態延遲載入) ==========
+        // ========== 地圖架構 (雙圖層：大世界公園 / 單一公園樹木) ==========
         const map = L.map('map').setView([22.3193, 114.1694], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        
+        // 兩個專屬圖層群組，用來在「大世界」和「公園內部 2D 地圖」之間切換
+        const parksLayerGroup = L.layerGroup().addTo(map);
+        const treesLayerGroup = L.layerGroup(); 
+        
         const playerMarker = L.marker([22.3193, 114.1694], { icon: L.divIcon({ className: 'player-marker', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000 }).addTo(map);
 
         async function loadIndexData() {
@@ -335,12 +344,12 @@
                 
                 Object.keys(parksData).forEach(name => {
                     const p = parksData[name];
-                    const marker = L.marker([p.lat, p.lng]).addTo(map);
+                    const marker = L.marker([p.lat, p.lng]).addTo(parksLayerGroup); // 加到公園圖層
                     marker.bindPopup(`
                         <div style="min-width:170px; text-align:center;">
                             <div style="font-size:16px; font-weight:bold; color:#27ae60; margin-bottom:6px;">🌳 ${name}</div>
                             <div style="font-size:12px; color:#666; margin-bottom:8px;">包含 ${p.count} 棵樹木</div>
-                            <button class="enter-park-btn" onclick="enterPark('${name.replace(/'/g, "\\'")}')">進入 3D 公園</button>
+                            <button class="enter-park-btn" onclick="enterPark('${name.replace(/'/g, "\\'")}')">進入公園</button>
                         </div>
                     `);
                     parkSelect.add(new Option(`${name}`, name));
@@ -353,6 +362,7 @@
             }
         }
 
+        // ========== 3D 場景地板生成 ==========
         function createMapFloor(scene, centerLat, centerLng) {
             const zoom = 17;
             const resolution = 156543.03392 * Math.cos(centerLat * Math.PI / 180) / Math.pow(2, zoom);
@@ -385,7 +395,9 @@
         let scene3D, camera3D, renderer3D, animationId3D, joystickManager;
         const walkSpeed = 0.15; let moveData = { forward: 0, right: 0 };
         const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        let is3DView = true; // 追蹤目前是在 3D 還是公園 2D 狀態
         
+        // ========== 進入單一公園 ==========
         window.enterPark = async function(parkName) {
             const park = parksData[parkName]; 
             if (!park) return;
@@ -405,21 +417,95 @@
             }
 
             currentParkName = parkName; 
+            is3DView = true; // 預設進入 3D 模式
+            
+            // 繪製公園內部的 2D 樹木圖層 (用顏色區分是否收集過)
+            treesLayerGroup.clearLayers();
+            park.trees.forEach(tree => {
+                if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
+                    const isCollected = playerData.collectedSpecies.includes(tree.chinese);
+                    const circleColor = isCollected ? '#2ecc71' : '#bdc3c7'; // 綠色(已收集) vs 灰色(未收集)
+                    
+                    const circle = L.circleMarker([tree.lat, tree.lng], {
+                        radius: 6, color: '#fff', weight: 1.5, fillColor: circleColor, fillOpacity: 0.9
+                    });
+                    circle.bindPopup(`<b>${tree.chinese || '未知品種'}</b><br><small>${tree.scientific || ''}</small>`);
+                    circle.addTo(treesLayerGroup);
+                }
+            });
+
+            // 切換 Leaflet 圖層：隱藏大世界，顯示樹木
+            map.removeLayer(parksLayerGroup);
+            map.addLayer(treesLayerGroup);
+            map.setView([park.lat, park.lng], 18); // 鏡頭拉近到該公園
+
+            // 介面切換
             mapDiv.style.display = 'none'; 
             sceneContainer.style.display = 'block';
-            
-            // 介面切換：隱藏設定按鈕，顯示返回 2D 按鈕
             settingsPanel.classList.remove('show'); 
             settingsBtn.style.display = 'none'; 
-            switch2dBtn.style.display = 'block';
+            
+            // 顯示右上角的公園內部控制按鈕
+            switchViewBtn.style.display = 'block';
+            switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈'; 
+            leaveParkBtn.style.display = 'block';
             document.getElementById('crosshair').style.display = 'block'; 
             
             init3DScene(parkName, park);
         };
 
+        // ========== 切換 2D/3D 視角 ==========
+        switchViewBtn.addEventListener('click', () => {
+            is3DView = !is3DView;
+            if (is3DView) {
+                // 切換回 3D 虛擬漫遊
+                mapDiv.style.display = 'none';
+                sceneContainer.style.display = 'block';
+                document.getElementById('crosshair').style.display = 'block';
+                switchViewBtn.innerHTML = '🗺️ 2D 樹木分佈';
+            } else {
+                // 切換到 2D 樹木地圖
+                sceneContainer.style.display = 'none';
+                mapDiv.style.display = 'block';
+                document.getElementById('crosshair').style.display = 'none';
+                switchViewBtn.innerHTML = '🚶‍♂️ 3D 虛擬漫遊';
+                
+                // 強制 Leaflet 重新渲染 (因為原本隱藏著，避免破圖)
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        });
+
+        // ========== 離開公園 (返回大世界地圖) ==========
+        leaveParkBtn.addEventListener('click', () => {
+            // 停止 3D 渲染
+            cancelAnimationFrame(animationId3D); 
+            document.getElementById('scene3d').innerHTML = ''; 
+            if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
+            
+            // UI 復原
+            sceneContainer.style.display = 'none'; 
+            mapDiv.style.display = 'block'; 
+            switchViewBtn.style.display = 'none'; 
+            leaveParkBtn.style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none'; 
+            document.getElementById('tree-info-panel').style.display = 'none';
+            settingsBtn.style.display = 'block';
+            
+            // 圖層切換：移除樹木，顯示大世界公園
+            map.removeLayer(treesLayerGroup);
+            map.addLayer(parksLayerGroup);
+            map.setView([currentPlayerLat, currentPlayerLng], 12); // 將鏡頭拉回玩家所在位置
+            setTimeout(() => map.invalidateSize(), 100);
+            
+            currentParkName = null;
+            showToast('已離開公園');
+        });
+
+        // ========== 3D 場景初始化 ==========
         function init3DScene(parkName, park) {
             try {
                 const sceneDiv = document.getElementById('scene3d');
+                sceneDiv.innerHTML = ''; // 確保乾淨
                 scene3D = new THREE.Scene(); 
                 scene3D.background = new THREE.Color(0x87CEEB); 
                 scene3D.fog = new THREE.Fog(0x87CEEB, 10, 150);
@@ -432,7 +518,6 @@
                 let startX = (currentPlayerLng - park.lng) * lngScale;
                 let startZ = -(currentPlayerLat - park.lat) * latScale;
                 
-                // 防崩潰檢查：如果座標為 NaN 則設為 0
                 if (isNaN(startX)) startX = 0;
                 if (isNaN(startZ)) startZ = 0;
 
@@ -442,7 +527,6 @@
 
                 renderer3D = new THREE.WebGLRenderer({ antialias: false }); 
                 renderer3D.setSize(window.innerWidth, window.innerHeight);
-                renderer3D.setClearColor(0x87CEEB); // 確保背景不是黑的
                 sceneDiv.appendChild(renderer3D.domElement);
 
                 scene3D.add(new THREE.AmbientLight(0xffffff, 0.7));
@@ -459,7 +543,6 @@
 
                 if (Array.isArray(park.trees)) {
                     park.trees.slice(0, 300).forEach(tree => {
-                        // 防崩潰檢查：確保樹木資料完整
                         if (typeof tree.lng !== 'number' || typeof tree.lat !== 'number') return;
                         
                         const x = (tree.lng - park.lng) * lngScale; 
@@ -505,7 +588,7 @@
             } catch (error) {
                 console.error("3D 渲染失敗:", error);
                 showToast("3D 場景載入失敗，已切換回 2D 模式");
-                switch2dBtn.click(); // 自動退回 2D
+                switchViewBtn.click(); // 自動切換回 2D
             }
         }
 
@@ -525,22 +608,6 @@
             }
             panel.style.display = 'none';
         }
-
-        // 返回 2D 地圖按鈕邏輯
-        switch2dBtn.addEventListener('click', () => {
-            cancelAnimationFrame(animationId3D); 
-            document.getElementById('scene3d').innerHTML = ''; 
-            if (joystickManager) { joystickManager.destroy(); joystickManager = null; }
-            
-            sceneContainer.style.display = 'none'; 
-            mapDiv.style.display = 'block'; 
-            switch2dBtn.style.display = 'none'; 
-            document.getElementById('crosshair').style.display = 'none'; 
-            document.getElementById('tree-info-panel').style.display = 'none';
-            settingsBtn.style.display = 'block';
-            
-            showToast('已返回 2D 地圖');
-        });
 
         // ========== GPS 設定與更新 ==========
         document.getElementById('mock-gps-toggle').addEventListener('change', (e) => {
@@ -599,6 +666,11 @@
                 document.getElementById('reveal-title').textContent = "解鎖新卡牌！"; 
                 document.getElementById('reveal-card-name').textContent = speciesName;
                 document.getElementById('card-reveal-modal').classList.add('show');
+                
+                // 如果目前在 2D 樹木地圖模式，重新繪製以更新綠色狀態
+                if (currentParkName && !is3DView) {
+                    enterPark(currentParkName);
+                }
             }
             savePlayerData();
         }
